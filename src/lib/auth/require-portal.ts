@@ -22,7 +22,11 @@ export async function requirePortalRole(allowedRole: UserRole) {
     redirect("/login");
   }
 
-  if (session.user.role !== allowedRole) {
+  // ADMIN has superset access to every portal (see dashboardPathForRole,
+  // which currently points ADMIN at this same Dentist portal) — exempt it
+  // from the wrong-role redirect, otherwise an admin visiting /dashboard
+  // would be redirected back to /dashboard forever.
+  if (session.user.role !== allowedRole && session.user.role !== "ADMIN") {
     redirect(dashboardPathForRole(session.user.role));
   }
 

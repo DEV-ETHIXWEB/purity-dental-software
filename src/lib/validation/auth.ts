@@ -6,7 +6,8 @@ export const loginSchema = z.object({
     .string()
     .trim()
     .min(1, "Email is required.")
-    .email("Enter a valid email address."),
+    .email("Enter a valid email address.")
+    .toLowerCase(),
   password: z.string().min(1, "Password is required."),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -17,7 +18,8 @@ export const requestPasswordResetSchema = z.object({
     .string()
     .trim()
     .min(1, "Email is required.")
-    .email("Enter a valid email address."),
+    .email("Enter a valid email address.")
+    .toLowerCase(),
 });
 export type RequestPasswordResetInput = z.infer<
   typeof requestPasswordResetSchema

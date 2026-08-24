@@ -30,6 +30,15 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
+  // Used to build absolute password-reset links (see
+  // src/lib/actions/password-reset.ts). `z.string().min(1)` rejects an
+  // empty string, not just a missing key, so a misconfigured build-time env
+  // (unset var substituted as "") fails fast here instead of silently
+  // producing a link with no origin.
+  NEXT_PUBLIC_APP_URL: z
+    .string()
+    .min(1)
+    .default("http://localhost:3000"),
 });
 
 export type Env = z.infer<typeof envSchema>;

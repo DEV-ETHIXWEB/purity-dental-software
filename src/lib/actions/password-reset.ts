@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { generateToken, hashToken } from "@/lib/auth/tokens";
 import { hashPassword } from "@/lib/auth/password";
+import { getEnv } from "@/lib/env";
 import {
   requestPasswordResetSchema,
   resetPasswordSchema,
@@ -63,9 +64,7 @@ export async function requestPasswordReset(
         data: { userId: user.id, tokenHash, expiresAt },
       });
 
-      const resetLink = `${
-        process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
-      }/reset-password?token=${rawToken}`;
+      const resetLink = `${getEnv().NEXT_PUBLIC_APP_URL}/reset-password?token=${rawToken}`;
 
       // DEV-ONLY STUB: log instead of emailing. See file header comment —
       // a real transactional email provider is a follow-up, not built here.
@@ -138,14 +137,28 @@ export async function resetPassword(
 
     const passwordHash = await hashPassword(parsed.data.password);
 
+    // Claim the token atomically: the WHERE clause re-checks usedAt IS NULL
+    // at the database level, so if two concurrent requests race for the same
+    // token, only the first `updateMany` matches a row (count === 1) — the
+    // second gets count === 0 and is rejected below. Without this, the two
+    // requests' earlier `findUnique` reads (both seeing usedAt: null before
+    // either transaction commits) would let the token be redeemed twice.
+    const claimed = await prisma.passwordResetToken.updateMany({
+      where: { id: resetToken.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    if (claimed.count === 0) {
+      return {
+        status: "error",
+        message: "This reset link is invalid or has expired. Please request a new one.",
+      };
+    }
+
     await prisma.$transaction([
       prisma.user.update({
         where: { id: resetToken.userId },
         data: { passwordHash },
-      }),
-      prisma.passwordResetToken.update({
-        where: { id: resetToken.id },
-        data: { usedAt: new Date() },
       }),
       // Invalidate all existing sessions for this user — a password reset
       // should log out anyone (including an attacker) holding a stale
