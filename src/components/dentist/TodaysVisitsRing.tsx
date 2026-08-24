@@ -50,8 +50,7 @@ export function TodaysVisitsRing({ completed, total }: TodaysVisitsRingProps) {
           x="64"
           y="60"
           textAnchor="middle"
-          className="fill-text-primary"
-          style={{ fontSize: "26px", fontWeight: 700 }}
+          className="fill-text-primary text-[26px] font-bold"
         >
           {completed}
         </text>
@@ -59,8 +58,7 @@ export function TodaysVisitsRing({ completed, total }: TodaysVisitsRingProps) {
           x="64"
           y="80"
           textAnchor="middle"
-          className="fill-text-secondary"
-          style={{ fontSize: "12px" }}
+          className="fill-text-secondary text-xs"
         >
           of {total}
         </text>

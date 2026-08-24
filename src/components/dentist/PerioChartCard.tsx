@@ -22,11 +22,7 @@ export function PerioChartCard({ entry }: { entry: SamplePerioChartEntry | null 
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
       <div
         aria-hidden="true"
-        className="flex min-h-[220px] items-center justify-center rounded-[var(--radius-xl)]"
-        style={{
-          background:
-            "radial-gradient(120% 120% at 50% 30%, rgba(0,145,252,0.14), rgba(74,199,179,0.08) 60%, transparent 100%)",
-        }}
+        className="decor-radial-blue-teal flex min-h-[220px] items-center justify-center rounded-[var(--radius-xl)]"
       >
         {/* Placeholder for the 3D tooth-model illustration used in the design
             mockups. Drop in the final interactive 3D asset here. */}

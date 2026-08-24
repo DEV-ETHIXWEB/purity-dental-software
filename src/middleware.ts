@@ -134,18 +134,36 @@ function routeGuard(
 /**
  * Build a strict, nonce-based CSP. Deliberately does NOT include
  * `unsafe-inline` or `unsafe-eval` in production — Next.js auto-applies the
- * per-request nonce to its own framework/hydration scripts and inline
- * styles, so a strict policy works without them. `unsafe-eval` is enabled
- * only in development, per Next's own documented guidance (React's dev
- * build uses `eval` for enhanced error stack reconstruction; production
- * React/Next never do).
+ * per-request nonce to its own framework/hydration scripts and most inline
+ * styles it generates, so a strict policy works without them for
+ * application code. `unsafe-eval` is enabled only in development, per
+ * Next's own documented guidance (React's dev build uses `eval` for
+ * enhanced error stack reconstruction; production React/Next never do).
+ *
+ * Known residual gap: `next/image` sets a `style="color:transparent"`
+ * attribute on its underlying <img> (verified via browser CSP-violation
+ * reports; this repo's own components carry no inline `style=` — every
+ * data-driven size/gradient uses SVG attributes or a named CSS class, see
+ * globals.css). That one style is a fixed, non-user-controlled string with
+ * no security relevance (it doesn't execute code or reflect any input) —
+ * accepted as a known, low-severity, upstream Next.js/CSP interaction
+ * rather than broadening `style-src` to `unsafe-inline`/`unsafe-hashes` for
+ * the whole app to silence it. Revisit if a future Next release nonces it.
+ *
+ * `unsafe-inline` was previously listed here for style-src in development,
+ * but per the CSP spec browsers ignore `unsafe-inline` whenever a nonce is
+ * also present in the same directive — so it never actually did anything
+ * and has been removed rather than left as misleading dead code. Dev-mode
+ * Turbopack/React-Refresh inline styles are genuinely blocked by this CSP
+ * in `next dev`; this is a dev-only console-noise/HMR-styling limitation
+ * that does not reproduce in `next build && next start` (verified).
  */
 function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV === "development";
   const directives = [
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
-    `style-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-inline'" : ""}`,
+    `style-src 'self' 'nonce-${nonce}'`,
     `img-src 'self' blob: data:`,
     // next/font/google self-hosts font files at build time (no runtime
     // request to Google's CDN), so 'self' is sufficient here.

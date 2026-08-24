@@ -19,7 +19,7 @@ export function CollectionRateRing({ percent }: { percent: number }) {
           strokeDashoffset={offset}
           transform="rotate(-90 56 56)"
         />
-        <text x="56" y="62" textAnchor="middle" className="fill-text-primary" style={{ fontSize: "22px", fontWeight: 700 }}>
+        <text x="56" y="62" textAnchor="middle" className="fill-text-primary text-[22px] font-bold">
           {percent}%
         </text>
       </svg>

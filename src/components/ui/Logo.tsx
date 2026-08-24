@@ -23,7 +23,6 @@ export function Logo({ className, height = 40 }: LogoProps) {
       height={height}
       priority
       className={cn("h-auto object-contain", className)}
-      style={{ height, width: "auto" }}
     />
   );
 }

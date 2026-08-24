@@ -15,11 +15,7 @@ export function DashboardHero() {
   return (
     <div
       aria-hidden="true"
-      className="relative hidden h-full min-h-[180px] w-full items-center justify-center overflow-hidden rounded-[var(--radius-2xl)] sm:flex"
-      style={{
-        background:
-          "radial-gradient(120% 120% at 30% 20%, rgba(74,199,179,0.25), rgba(0,145,252,0.12) 60%, transparent 100%)",
-      }}
+      className="decor-radial-teal-blue relative hidden h-full min-h-[180px] w-full items-center justify-center overflow-hidden rounded-[var(--radius-2xl)] sm:flex"
     >
       <div className="brand-gradient-bg flex h-24 w-24 items-center justify-center rounded-full opacity-90 blur-[1px]">
         <Sparkles className="h-10 w-10 text-white" />

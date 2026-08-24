@@ -44,10 +44,7 @@ export function CashflowTrendChart({ data }: CashflowTrendChartProps) {
           <span className="h-0.5 w-4 bg-[var(--color-brand-blue)]" /> Collected
         </span>
         <span className="flex items-center gap-1.5">
-          <span
-            className="h-0.5 w-4 bg-[var(--color-border-strong)]"
-            style={{ backgroundImage: "repeating-linear-gradient(90deg, var(--color-border-strong) 0 4px, transparent 4px 8px)" }}
-          />
+          <span className="legend-swatch-dashed h-0.5 w-4" />
           Billed
         </span>
       </div>
