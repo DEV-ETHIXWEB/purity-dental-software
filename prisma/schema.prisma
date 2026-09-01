@@ -1,0 +1,365 @@
+// Prisma schema for Purity — a role-based dental clinic practice-management app.
+//
+// Scope note: this file defines the full multi-tenant data model for the
+// foundation phase (Organization, User/RBAC, Patient, Appointment, Treatment
+// Plan, Perio Chart, Billing, Audit Log). No migrations have been run against
+// a live database yet — see the task README/spec: `prisma generate` only
+// (schema validity + client generation). `prisma migrate dev` / `db push`
+// are a follow-up once real Postgres credentials are available.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// NOTE (Prisma 7): the connection URL is no longer set here. It lives in
+// `prisma.config.ts` (for the CLI/migrations) and is passed to `PrismaClient`
+// via a driver adapter at runtime — see `src/lib/prisma.ts`.
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  DENTIST
+  HYGIENIST
+  PATIENT
+  RECEPTIONIST
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CHECKED_IN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum TreatmentPlanStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  DECLINED
+}
+
+enum InvoiceStatus {
+  PAID
+  PENDING
+  OVERDUE
+  DRAFT
+  VOID
+}
+
+enum PatientSex {
+  MALE
+  FEMALE
+  OTHER
+  UNKNOWN
+}
+
+// ---------------------------------------------------------------------------
+// Organization (clinic / tenant)
+// ---------------------------------------------------------------------------
+
+/// A dental clinic tenant. Every tenant-scoped table carries an
+/// `organizationId` foreign key so the app can be deployed multi-clinic.
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  timezone  String   @default("America/New_York")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users            User[]
+  patients         Patient[]
+  appointments     Appointment[]
+  treatmentPlanItems TreatmentPlanItem[]
+  perioChartEntries  PerioChartEntry[]
+  invoices         Invoice[]
+  auditLogs        AuditLog[]
+
+  @@map("organizations")
+}
+
+// ---------------------------------------------------------------------------
+// User (staff accounts: dentist, hygienist, receptionist, admin — and the
+// login identity for a patient portal account, linked via Patient.userId)
+// ---------------------------------------------------------------------------
+
+model User {
+  id             String   @id @default(cuid())
+  organizationId String
+  role           UserRole
+  email          String   @unique
+  name           String
+  avatarUrl      String?
+  phone          String?
+
+  /// bcrypt hash of the account password. NEVER store or log the plaintext
+  /// password, and never select/return this column to a client — see
+  /// `src/lib/auth/password.ts` for hashing/verification.
+  passwordHash String
+
+  /// Soft-disable switch for an account (e.g. an offboarded staff member).
+  /// Session validation and login both must treat `isActive: false` as
+  /// unauthenticated — see `src/lib/auth/session.ts`.
+  isActive   Boolean   @default(true)
+  disabledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // A staff user (dentist/hygienist) can be the treating provider on many appointments.
+  appointmentsAsProvider Appointment[] @relation("AppointmentProvider")
+
+  // A PATIENT-role user is linked one-to-one with their clinical Patient record.
+  patientProfile Patient? @relation("PatientUser")
+
+  auditLogs      AuditLog[]
+  sessions       Session[]
+  passwordResets PasswordResetToken[]
+
+  @@index([organizationId])
+  @@index([organizationId, role])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Auth: Session + Password Reset
+// ---------------------------------------------------------------------------
+
+/// A server-side session record backing the httpOnly session cookie. The
+/// cookie itself only ever holds the raw, cryptographically random token;
+/// this table stores a SHA-256 hash of that token so a leaked database
+/// (backup, read replica, etc.) can't be used to replay live sessions.
+/// See `src/lib/auth/session.ts` for creation/validation/revocation.
+model Session {
+  id            String   @id @default(cuid())
+  userId        String
+  tokenHash     String   @unique
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("sessions")
+}
+
+/// A single-use password reset token. Like `Session`, only a hash of the
+/// raw token is stored — the raw token is embedded in the reset link and
+/// never persisted. See `src/lib/auth/password-reset.ts`.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("password_reset_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Patient
+// ---------------------------------------------------------------------------
+
+model Patient {
+  id             String      @id @default(cuid())
+  organizationId String
+  userId         String?     @unique
+  firstName      String
+  lastName       String
+  dateOfBirth    DateTime
+  sex            PatientSex  @default(UNKNOWN)
+  phone          String?
+  email          String?
+  photoUrl       String?
+
+  // Billing snapshot fields (kept denormalized for fast dashboard/list reads;
+  // source of truth for transactions is the Invoice/InvoiceLineItem tables).
+  insuranceProvider String?
+  insurancePlan     String?
+  balanceCents      Int      @default(0)
+
+  // Clinical snapshot fields shown on dashboard/profile cards.
+  medicalAlerts   String[] @default([]) // e.g. "Penicillin allergy", "Sensitive gums"
+  lastCleaningAt  DateTime?
+  recallStatus    String?   // e.g. "Due in 2 weeks", "Overdue"
+  nextApptAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?         @relation("PatientUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  appointments       Appointment[]
+  treatmentPlanItems TreatmentPlanItem[]
+  perioChartEntries  PerioChartEntry[]
+  invoices           Invoice[]
+
+  @@index([organizationId])
+  @@index([organizationId, lastName, firstName])
+  @@map("patients")
+}
+
+// ---------------------------------------------------------------------------
+// Appointment
+// ---------------------------------------------------------------------------
+
+model Appointment {
+  id             String            @id @default(cuid())
+  organizationId String
+  patientId      String
+  providerId     String
+  status         AppointmentStatus @default(SCHEDULED)
+  procedureType  String
+  notes          String?
+
+  // Stored as UTC instants; render in Organization.timezone at the UI layer.
+  startTime DateTime
+  endTime   DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  provider     User         @relation("AppointmentProvider", fields: [providerId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([providerId, startTime])
+  @@index([patientId, startTime])
+  @@map("appointments")
+}
+
+// ---------------------------------------------------------------------------
+// Treatment Plan
+// ---------------------------------------------------------------------------
+
+model TreatmentPlanItem {
+  id             String              @id @default(cuid())
+  organizationId String
+  patientId      String
+  tooth          String              // e.g. "#14" or a named surface
+  quadrant       String              // e.g. "Upper Left"
+  procedure      String              // e.g. "Composite Filling"
+  status         TreatmentPlanStatus @default(PLANNED)
+  recallInterval String?             // e.g. "6 months"
+  notes          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@map("treatment_plan_items")
+}
+
+// ---------------------------------------------------------------------------
+// Perio Chart
+// ---------------------------------------------------------------------------
+
+/// One row per charting session for a patient (trend over time).
+model PerioChartEntry {
+  id             String   @id @default(cuid())
+  organizationId String
+  patientId      String
+  chartedAt      DateTime @default(now())
+  avgPocketDepthMm Float
+  bleedingPercent  Float
+  notes            String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([patientId, chartedAt])
+  @@map("perio_chart_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Billing
+// ---------------------------------------------------------------------------
+
+model Invoice {
+  id             String        @id @default(cuid())
+  organizationId String
+  patientId      String
+  status         InvoiceStatus @default(PENDING)
+  issuedAt       DateTime      @default(now())
+  dueAt          DateTime
+  totalCents     Int           @default(0)
+  notes          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  lineItems    InvoiceLineItem[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([patientId])
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  procedureCode String?
+  quantity    Int      @default(1)
+  unitPriceCents Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_line_items")
+}
+
+// ---------------------------------------------------------------------------
+// Audit Log
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  actorUserId    String?
+  action         String   // e.g. "invoice.marked_paid", "appointment.rescheduled"
+  resourceType   String   // e.g. "Invoice", "Appointment", "Patient"
+  resourceId     String
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor        User?        @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([organizationId, resourceType, resourceId])
+  @@index([actorUserId])
+  @@map("audit_logs")
+}
