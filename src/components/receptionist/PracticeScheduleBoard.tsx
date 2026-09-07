@@ -5,13 +5,9 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
-import {
-  type SampleAppointment,
-  type AppointmentStatus,
-  type SampleProvider,
-  getPatientById,
-  patientFullName,
-} from "@/lib/sample-data";
+import { patientFullName } from "@/lib/patient-format";
+import type { AppointmentWithPatientAndProvider } from "@/lib/data/appointments";
+import type { AppointmentStatus, User } from "@/generated/prisma/client";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   SCHEDULED: "Scheduled",
@@ -33,6 +29,17 @@ const STATUS_TONE: Record<AppointmentStatus, BadgeTone> = {
   NO_SHOW: "error",
 };
 
+/** Left-accent border color per status, for at-a-glance scanning without reading the badge. Static bracket classes — CSP-safe (compiled, not inline). */
+const STATUS_ACCENT: Record<AppointmentStatus, string> = {
+  SCHEDULED: "border-l-[var(--color-info)]",
+  CONFIRMED: "border-l-[var(--color-brand-blue)]",
+  CHECKED_IN: "border-l-[var(--color-brand-teal)]",
+  IN_PROGRESS: "border-l-[var(--color-warning)]",
+  COMPLETED: "border-l-[var(--color-success)]",
+  CANCELLED: "border-l-[var(--color-border-strong)]",
+  NO_SHOW: "border-l-[var(--color-error)]",
+};
+
 const START_HOUR = 8;
 const END_HOUR = 18;
 
@@ -42,10 +49,14 @@ function hourLabel(hour: number) {
   return `${displayHour}:00 ${period}`;
 }
 
+function isSameDay(a: Date, b: Date) {
+  return a.toDateString() === b.toDateString();
+}
+
 export interface PracticeScheduleBoardProps {
   date: Date;
-  appointments: SampleAppointment[];
-  providers: SampleProvider[];
+  appointments: AppointmentWithPatientAndProvider[];
+  providers: User[];
 }
 
 /**
@@ -69,13 +80,17 @@ export function PracticeScheduleBoard({ date, appointments, providers }: Practic
     day: "numeric",
   });
 
-  const bookedByHour = new Map<number, SampleAppointment[]>();
+  const bookedByHour = new Map<number, AppointmentWithPatientAndProvider[]>();
   for (const appt of filtered) {
-    const hour = new Date(appt.startTime).getHours();
+    const hour = appt.startTime.getHours();
     const list = bookedByHour.get(hour) ?? [];
     list.push(appt);
     bookedByHour.set(hour, list);
   }
+
+  const now = new Date();
+  const isToday = isSameDay(date, now);
+  const currentHour = now.getHours();
 
   return (
     <Card>
@@ -122,34 +137,42 @@ export function PracticeScheduleBoard({ date, appointments, providers }: Practic
         <ol className="flex flex-col divide-y divide-border border-y border-border">
           {hours.map((hour) => {
             const slotAppointments = bookedByHour.get(hour) ?? [];
+            const isNow = isToday && hour === currentHour;
             return (
-              <li key={hour} className="flex min-h-[64px] gap-4 py-2">
-                <span className="w-20 shrink-0 pt-1 text-xs font-medium text-text-secondary">
+              <li key={hour} className="flex min-h-11 gap-4 py-1.5">
+                <span
+                  className={cn(
+                    "flex w-20 shrink-0 items-center gap-1.5 pt-1 text-xs font-medium",
+                    isNow ? "text-[var(--color-brand-blue-text)]" : "text-text-secondary",
+                  )}
+                >
+                  {isNow && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-brand-blue)]" aria-hidden="true" />}
                   {hourLabel(hour)}
                 </span>
-                <div className="flex flex-1 flex-col gap-2">
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   {slotAppointments.length === 0 ? (
-                    <div className="flex h-full items-center rounded-[var(--radius-md)] border border-dashed border-border px-3 py-2 text-xs text-text-secondary">
+                    <div className="flex h-full min-h-8 items-center border-b border-dashed border-border px-1 text-xs text-text-secondary/80">
                       Open
                     </div>
                   ) : (
                     slotAppointments.map((appt) => {
-                      const patient = getPatientById(appt.patientId);
+                      const patient = appt.patient;
                       return (
                         <div
                           key={appt.id}
-                          className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-surface-muted px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                          className={cn(
+                            "flex min-w-0 flex-col gap-2 rounded-[var(--radius-md)] border border-l-[3px] border-border bg-surface-muted px-3 py-2 sm:flex-row sm:items-center sm:justify-between",
+                            STATUS_ACCENT[appt.status],
+                          )}
                         >
                           <div className="flex min-w-0 items-center gap-3">
-                            {patient && (
-                              <Avatar name={patientFullName(patient)} src={patient.photoUrl} size="sm" />
-                            )}
+                            <Avatar name={patientFullName(patient)} src={patient.photoUrl} size="sm" />
                             <div className="min-w-0">
                               <p className="truncate text-sm font-medium text-text-primary">
-                                {patient ? patientFullName(patient) : "Unknown patient"}
+                                {patientFullName(patient)}
                               </p>
                               <p className="truncate text-xs text-text-secondary">
-                                {appt.procedureType} · {appt.providerName}
+                                {appt.procedureType} · {appt.provider.name}
                               </p>
                             </div>
                           </div>

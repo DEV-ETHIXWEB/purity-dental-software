@@ -1,13 +1,15 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
-import { type SamplePatient, patientFullName } from "@/lib/sample-data";
+import { patientFullName, patientAge } from "@/lib/patient-format";
+import type { Patient } from "@/generated/prisma/client";
 
 const ALERT_TONE = "error" as const;
 
 export interface RecentConsultationCardProps {
-  patient: SamplePatient;
+  patient: Patient;
   observation: string;
   /** Portal route prefix for the patient profile link (e.g. "/hygienist"). Defaults to the Dentist portal's root. */
   basePath?: string;
@@ -34,14 +36,7 @@ export function RecentConsultationCard({
               {patientFullName(patient)}
             </Link>
             <p className="text-sm text-text-secondary">
-              Last cleaning:{" "}
-              {patient.lastCleaningAt
-                ? new Date(patient.lastCleaningAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })
-                : "No record"}
+              Age {patientAge(patient)} · {patient.sex === "MALE" ? "Male" : patient.sex === "FEMALE" ? "Female" : "Other"}
             </p>
           </div>
         </div>
@@ -56,9 +51,29 @@ export function RecentConsultationCard({
           </div>
         )}
 
-        <p className="rounded-[var(--radius-md)] bg-surface-muted p-3 text-sm text-text-primary">
-          {observation}
-        </p>
+        <div className="rounded-[var(--radius-md)] bg-surface-muted p-3 text-sm">
+          <p className="text-text-secondary">
+            Last cleaning:{" "}
+            <span className="text-text-primary">
+              {patient.lastCleaningAt
+                ? new Date(patient.lastCleaningAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "No record"}
+            </span>
+          </p>
+          <p className="mt-1 text-text-primary">{observation}</p>
+        </div>
+
+        <Link
+          href={`${basePath}/patients/${patient.id}`}
+          className="inline-flex items-center gap-1.5 self-start text-sm font-medium text-[var(--color-brand-blue-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
+        >
+          View details
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </Link>
       </CardContent>
     </Card>
   );

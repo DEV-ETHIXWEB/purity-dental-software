@@ -1,46 +1,91 @@
 "use client";
 
-import { useId, useState } from "react";
-import { CalendarCheck, CheckCircle2, ChevronLeft, Loader2 } from "lucide-react";
+import { useId, useMemo, useState } from "react";
+import { CalendarCheck, ChevronLeft, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { CheckmarkIcon } from "@/components/ui/icons/purity-raster-icons";
 import { cn } from "@/lib/cn";
-import { bookingReasons, openAppointmentSlots, type SampleOpenSlot } from "@/lib/sample-data";
 import { formatFriendlyDate, formatTime } from "./formatters";
+import { bookPatientAppointment } from "@/lib/actions/patient-appointments";
+
+const BOOKING_REASONS = ["Routine Cleaning", "Consultation", "Follow-up", "Tooth Pain / Urgent"] as const;
+
+interface OpenSlot {
+  id: string;
+  startTime: Date;
+  endTime: Date;
+}
+
+/** Synthetic near-future weekday slots (9am-4pm) over the next two weeks — there's no real provider-availability engine yet. */
+function generateOpenSlots(): OpenSlot[] {
+  const slots: OpenSlot[] = [];
+  const now = new Date();
+  let dayOffset = 1;
+  while (slots.length < 5 && dayOffset < 15) {
+    const day = new Date(now);
+    day.setDate(day.getDate() + dayOffset);
+    const dow = day.getDay();
+    if (dow !== 0 && dow !== 6) {
+      const hour = 9 + (slots.length % 6);
+      const startTime = new Date(day);
+      startTime.setHours(hour, 0, 0, 0);
+      const endTime = new Date(startTime.getTime() + 30 * 60000);
+      slots.push({ id: `slot_${dayOffset}`, startTime, endTime });
+    }
+    dayOffset += 1;
+  }
+  return slots;
+}
 
 type Step = "select" | "confirm" | "success";
 
+export interface BookAppointmentFlowProps {
+  providerId: string;
+  providerName: string;
+  onBooked?: () => void;
+}
+
 /**
  * Multi-step "request an appointment" flow: pick a reason and an open slot,
- * review before confirming, then a success state. This is a UI-only demo —
- * "booking" just moves through local component state, there's no real
- * scheduling backend or availability engine behind `openAppointmentSlots`.
+ * review before confirming, then a success state. Available slots are
+ * synthetic (no real provider-availability engine exists yet), but
+ * confirming creates a real Appointment via `bookPatientAppointment`.
  */
-export function BookAppointmentFlow({ onBooked }: { onBooked?: (slot: SampleOpenSlot, reason: string) => void }) {
+export function BookAppointmentFlow({ providerId, providerName, onBooked }: BookAppointmentFlowProps) {
   const [step, setStep] = useState<Step>("select");
-  const [reason, setReason] = useState<string>(bookingReasons[0]);
+  const [reason, setReason] = useState<string>(BOOKING_REASONS[0]);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const reasonLabelId = useId();
 
-  const selectedSlot = openAppointmentSlots.find((s) => s.id === selectedSlotId) ?? null;
+  const openSlots = useMemo(() => generateOpenSlots(), []);
+  const selectedSlot = openSlots.find((s) => s.id === selectedSlotId) ?? null;
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!selectedSlot) return;
     setSubmitting(true);
-    // Simulated network delay so the confirm button shows a real loading
-    // state rather than an instant, jarring jump to success.
-    window.setTimeout(() => {
-      setSubmitting(false);
+    setError(null);
+    const result = await bookPatientAppointment({
+      providerId,
+      procedureType: reason,
+      startTime: selectedSlot.startTime.toISOString(),
+      endTime: selectedSlot.endTime.toISOString(),
+    });
+    setSubmitting(false);
+    if (result.ok) {
       setStep("success");
-      onBooked?.(selectedSlot, reason);
-    }, 700);
+      onBooked?.();
+    } else {
+      setError(result.error ?? "Something went wrong.");
+    }
   }
 
   function handleStartOver() {
     setStep("select");
     setSelectedSlotId(null);
-    setReason(bookingReasons[0]);
+    setReason(BOOKING_REASONS[0]);
   }
 
   if (step === "success" && selectedSlot) {
@@ -48,7 +93,7 @@ export function BookAppointmentFlow({ onBooked }: { onBooked?: (slot: SampleOpen
       <Card>
         <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-success-bg text-success">
-            <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
+            <CheckmarkIcon className="h-8 w-8" aria-hidden="true" />
           </div>
           <div>
             <p className="text-lg font-semibold text-text-primary">Appointment requested</p>
@@ -83,13 +128,13 @@ export function BookAppointmentFlow({ onBooked }: { onBooked?: (slot: SampleOpen
                 What&apos;s this visit for?
               </legend>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-labelledby={reasonLabelId}>
-                {bookingReasons.map((r) => (
+                {BOOKING_REASONS.map((r) => (
                   <label
                     key={r}
                     className={cn(
                       "flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius-lg)] border px-4 py-2.5 text-sm font-medium transition-colors",
                       reason === r
-                        ? "border-[var(--color-brand-blue)] bg-info-bg text-[var(--color-brand-blue-text)]"
+                        ? "border-[var(--color-brand-blue)] bg-info-bg text-info-text"
                         : "border-border text-text-primary hover:bg-surface-muted",
                     )}
                   >
@@ -110,7 +155,7 @@ export function BookAppointmentFlow({ onBooked }: { onBooked?: (slot: SampleOpen
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium text-text-primary">Choose an open time</p>
               <ul className="flex flex-col gap-2">
-                {openAppointmentSlots.map((slot) => (
+                {openSlots.map((slot) => (
                   <li key={slot.id}>
                     <button
                       type="button"
@@ -127,7 +172,7 @@ export function BookAppointmentFlow({ onBooked }: { onBooked?: (slot: SampleOpen
                       <span className="font-medium text-text-primary">
                         {formatFriendlyDate(slot.startTime)}
                       </span>
-                      <span className="text-text-secondary">{formatTime(slot.startTime)} · {slot.providerName}</span>
+                      <span className="text-text-secondary">{formatTime(slot.startTime)} · {providerName}</span>
                     </button>
                   </li>
                 ))}
@@ -162,11 +207,16 @@ export function BookAppointmentFlow({ onBooked }: { onBooked?: (slot: SampleOpen
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-text-secondary">With</dt>
-                <dd className="font-medium text-text-primary">{selectedSlot.providerName}</dd>
+                <dd className="font-medium text-text-primary">{providerName}</dd>
               </div>
             </dl>
+            {error && (
+              <p role="alert" className="text-sm text-error">
+                {error}
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-3">
-              <Button variant="ghost" onClick={() => setStep("select")} className="min-h-11">
+              <Button variant="ghost" onClick={() => setStep("select")} className="min-h-11" disabled={submitting}>
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 Back
               </Button>

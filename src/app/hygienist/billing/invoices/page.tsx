@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import { InvoicesTable } from "@/components/dentist/InvoicesTable";
-import { invoices } from "@/lib/sample-data";
+import { requireRole } from "@/lib/auth/authorize";
+import { listInvoices } from "@/lib/data/billing";
 
 export const metadata: Metadata = {
   title: "Invoices",
   description: "Browse, filter, and manage patient invoices.",
 };
 
-export default function HygienistInvoicesPage() {
-  const sorted = [...invoices].sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+export default async function HygienistInvoicesPage() {
+  const session = await requireRole(["HYGIENIST", "ADMIN"]);
+  const invoices = await listInvoices(session.user.organizationId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -17,7 +19,7 @@ export default function HygienistInvoicesPage() {
         <p className="text-sm text-text-secondary">{invoices.length} invoices on file.</p>
       </div>
 
-      <InvoicesTable invoices={sorted} basePath="/hygienist" />
+      <InvoicesTable invoices={invoices} basePath="/hygienist" />
     </div>
   );
 }

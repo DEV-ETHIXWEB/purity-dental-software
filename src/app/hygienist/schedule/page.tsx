@@ -1,25 +1,28 @@
 import type { Metadata } from "next";
 import { ScheduleBoard } from "@/components/dentist/ScheduleBoard";
-import { practiceAppointments, scheduleWaitlist, currentHygienist } from "@/lib/sample-data";
+import { requireRole } from "@/lib/auth/authorize";
+import { todaysAppointmentsForProvider, appointmentsForProvider } from "@/lib/data/appointments";
+import { listWaitlistEntries } from "@/lib/data/waitlist";
 
 export const metadata: Metadata = {
   title: "Schedule",
   description: "Today's appointments, open time waitlist, and visit history.",
 };
 
-const TODAY = new Date("2026-08-24T12:00:00.000Z");
+export default async function HygienistSchedulePage() {
+  const session = await requireRole(["HYGIENIST", "ADMIN"]);
+  const { organizationId, id: providerId } = session.user;
+  const today = new Date();
 
-export default function HygienistSchedulePage() {
-  const todayIso = TODAY.toISOString().slice(0, 10);
-  const hygienistAppointments = practiceAppointments().filter(
-    (a) => a.providerId === currentHygienist.id,
-  );
-  const todaysAppointments = hygienistAppointments.filter((a) =>
-    a.startTime.startsWith(todayIso),
-  );
-  const recentVisits = hygienistAppointments
+  const [todaysAppointments, allAppointments, waitlist] = await Promise.all([
+    todaysAppointmentsForProvider(organizationId, providerId),
+    appointmentsForProvider(organizationId, providerId),
+    listWaitlistEntries(organizationId),
+  ]);
+
+  const recentVisits = allAppointments
     .filter((a) => a.status === "COMPLETED")
-    .sort((a, b) => b.startTime.localeCompare(a.startTime));
+    .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
 
   return (
     <div className="flex flex-col gap-6">
@@ -31,12 +34,11 @@ export default function HygienistSchedulePage() {
       </div>
 
       <ScheduleBoard
-        date={TODAY}
+        date={today}
         appointments={todaysAppointments}
-        waitlist={scheduleWaitlist}
+        waitlist={waitlist}
         recentVisits={recentVisits}
-        providerId={currentHygienist.id}
-        providerName={currentHygienist.name}
+        providerId={providerId}
       />
     </div>
   );

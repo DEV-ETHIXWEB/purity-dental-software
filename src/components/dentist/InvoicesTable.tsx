@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, Send, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle2, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   TableContainer,
   Table,
@@ -14,14 +15,12 @@ import {
 } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
 import { InvoiceStatusBadge } from "@/components/dentist/InvoiceStatusBadge";
-import {
-  type SampleInvoice,
-  type InvoiceStatus,
-  getPatientById,
-  patientFullName,
-  invoiceTotalCents,
-  formatCentsAsCurrency,
-} from "@/lib/sample-data";
+import { patientFullName } from "@/lib/patient-format";
+import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
+import { markInvoicePaid } from "@/lib/actions/mark-invoice-paid";
+import { sendPatientMessage } from "@/lib/actions/send-message";
+import type { InvoiceWithDetails } from "@/lib/data/billing";
+import type { InvoiceStatus } from "@/generated/prisma/client";
 import { cn } from "@/lib/cn";
 
 const PAGE_SIZE = 5;
@@ -33,30 +32,46 @@ const FILTERS: { label: string; value: InvoiceStatus | "ALL" }[] = [
 ];
 
 export interface InvoicesTableProps {
-  invoices: SampleInvoice[];
+  invoices: InvoiceWithDetails[];
   /** Portal route prefix for invoice detail links (e.g. "/hygienist"). Defaults to the Dentist portal's root. */
   basePath?: string;
 }
 
 export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
+  const router = useRouter();
   const [filter, setFilter] = useState<InvoiceStatus | "ALL">("ALL");
   const [page, setPage] = useState(1);
-  // Client-only "Marked as Paid" overrides layered on top of the sample data,
-  // purely for interactive demo purposes (no persistence yet).
-  const [paidOverrides, setPaidOverrides] = useState<Record<string, boolean>>({});
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [remindingId, setRemindingId] = useState<string | null>(null);
   const [remindedIds, setRemindedIds] = useState<Record<string, boolean>>({});
 
   const filtered = useMemo(() => {
-    const withOverrides = invoices.map((inv) =>
-      paidOverrides[inv.id] ? { ...inv, status: "PAID" as const } : inv,
-    );
-    if (filter === "ALL") return withOverrides;
-    return withOverrides.filter((inv) => inv.status === filter);
-  }, [invoices, filter, paidOverrides]);
+    if (filter === "ALL") return invoices;
+    return invoices.filter((inv) => inv.status === filter);
+  }, [invoices, filter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  async function handleMarkPaid(invoiceId: string) {
+    setPendingId(invoiceId);
+    await markInvoicePaid(invoiceId);
+    setPendingId(null);
+    router.refresh();
+  }
+
+  async function handleSendReminder(invoice: InvoiceWithDetails) {
+    setRemindingId(invoice.id);
+    const result = await sendPatientMessage(
+      invoice.patientId,
+      `Hi ${invoice.patient.firstName}, this is a reminder that invoice ${invoiceNumber(invoice)} for ${formatCentsAsCurrency(invoice.totalCents)} is still due. Please reply here or call us if you have any questions.`,
+    );
+    setRemindingId(null);
+    if (result.ok) {
+      setRemindedIds((prev) => ({ ...prev, [invoice.id]: true }));
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -100,7 +115,6 @@ export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
           </TableHead>
           <TableBody>
             {pageItems.map((invoice) => {
-              const patient = getPatientById(invoice.patientId);
               const isPaid = invoice.status === "PAID";
               return (
                 <TableRow key={invoice.id}>
@@ -109,17 +123,15 @@ export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
                       href={`${basePath}/billing/invoices/${invoice.id}`}
                       className="font-medium text-text-primary hover:text-[var(--color-brand-blue-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
                     >
-                      {invoice.invoiceNumber}
+                      {invoiceNumber(invoice)}
                     </Link>
                   </TableCell>
                   <TableCell className="text-text-secondary">
-                    {new Date(invoice.issuedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    {invoice.issuedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </TableCell>
-                  <TableCell className="text-text-primary">
-                    {patient ? patientFullName(patient) : "Unknown"}
-                  </TableCell>
+                  <TableCell className="text-text-primary">{patientFullName(invoice.patient)}</TableCell>
                   <TableCell className="font-medium text-text-primary">
-                    {formatCentsAsCurrency(invoiceTotalCents(invoice))}
+                    {formatCentsAsCurrency(invoice.totalCents)}
                   </TableCell>
                   <TableCell>
                     <InvoiceStatusBadge status={invoice.status} />
@@ -130,8 +142,9 @@ export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
                         <Button
                           size="icon"
                           variant="ghost"
-                          aria-label={`Mark ${invoice.invoiceNumber} as paid`}
-                          onClick={() => setPaidOverrides((prev) => ({ ...prev, [invoice.id]: true }))}
+                          aria-label={`Mark ${invoiceNumber(invoice)} as paid`}
+                          disabled={pendingId === invoice.id}
+                          onClick={() => handleMarkPaid(invoice.id)}
                         >
                           <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
@@ -142,17 +155,15 @@ export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
                           variant="ghost"
                           aria-label={
                             remindedIds[invoice.id]
-                              ? `Reminder sent for ${invoice.invoiceNumber}`
-                              : `Send reminder for ${invoice.invoiceNumber}`
+                              ? `Reminder sent for ${invoiceNumber(invoice)}`
+                              : `Send reminder for ${invoiceNumber(invoice)}`
                           }
-                          onClick={() => setRemindedIds((prev) => ({ ...prev, [invoice.id]: true }))}
+                          disabled={remindingId === invoice.id || remindedIds[invoice.id]}
+                          onClick={() => handleSendReminder(invoice)}
                         >
                           <Send className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       )}
-                      <Button size="icon" variant="ghost" aria-label={`Download PDF for ${invoice.invoiceNumber}`}>
-                        <Download className="h-4 w-4" aria-hidden="true" />
-                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>

@@ -1,27 +1,34 @@
 import type { Metadata } from "next";
 import { PracticeScheduleBoard } from "@/components/receptionist/PracticeScheduleBoard";
-import { todaysPracticeAppointments, practiceProviders } from "@/lib/sample-data";
+import { requireRole } from "@/lib/auth/authorize";
+import { todaysPracticeAppointments } from "@/lib/data/appointments";
+import { listProviders } from "@/lib/data/providers";
 
 export const metadata: Metadata = {
   title: "Schedule",
   description: "Practice-wide appointment calendar across every provider.",
 };
 
-const TODAY = new Date("2026-08-24T12:00:00.000Z");
+export default async function ReceptionistSchedulePage() {
+  const session = await requireRole(["RECEPTIONIST", "ADMIN"]);
+  const { organizationId } = session.user;
+  const today = new Date();
 
-export default function ReceptionistSchedulePage() {
-  const today = todaysPracticeAppointments();
+  const [todaysAppointments, providers] = await Promise.all([
+    todaysPracticeAppointments(organizationId),
+    listProviders(organizationId),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">Schedule</h1>
         <p className="text-sm text-text-secondary">
-          {today.length} appointment{today.length === 1 ? "" : "s"} today across {practiceProviders.length} providers.
+          {todaysAppointments.length} appointment{todaysAppointments.length === 1 ? "" : "s"} today across {providers.length} providers.
         </p>
       </div>
 
-      <PracticeScheduleBoard date={TODAY} appointments={today} providers={practiceProviders} />
+      <PracticeScheduleBoard date={today} appointments={todaysAppointments} providers={providers} />
     </div>
   );
 }

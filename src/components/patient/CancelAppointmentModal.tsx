@@ -4,26 +4,32 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import type { SampleAppointment } from "@/lib/sample-data";
+import type { Appointment, User } from "@/generated/prisma/client";
 import { formatFriendlyDate, formatTime } from "./formatters";
+import { cancelPatientAppointment } from "@/lib/actions/patient-appointments";
 
 interface CancelAppointmentModalProps {
-  appointment: SampleAppointment | null;
+  appointment: (Appointment & { provider: Pick<User, "name"> }) | null;
   onClose: () => void;
   onConfirm: (appointmentId: string) => void;
 }
 
-/** Confirmation dialog before cancelling an upcoming appointment; updates local list state on confirm, no real persistence. */
+/** Confirmation dialog before cancelling an upcoming appointment; persists via the real cancelPatientAppointment action. */
 export function CancelAppointmentModal({ appointment, onClose, onConfirm }: CancelAppointmentModalProps) {
   const [cancelling, setCancelling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!appointment) return;
     setCancelling(true);
-    window.setTimeout(() => {
-      setCancelling(false);
+    setError(null);
+    const result = await cancelPatientAppointment(appointment.id);
+    setCancelling(false);
+    if (result.ok) {
       onConfirm(appointment.id);
-    }, 500);
+    } else {
+      setError(result.error ?? "Something went wrong.");
+    }
   }
 
   return (
@@ -54,9 +60,16 @@ export function CancelAppointmentModal({ appointment, onClose, onConfirm }: Canc
         </>
       }
     >
-      <p className="text-sm text-text-secondary">
-        This will remove it from your upcoming visits. If you change your mind, you can always book a new time.
-      </p>
+      <div className="flex flex-col gap-2">
+        <p className="text-sm text-text-secondary">
+          This will remove it from your upcoming visits. If you change your mind, you can always book a new time.
+        </p>
+        {error && (
+          <p role="alert" className="text-sm text-error">
+            {error}
+          </p>
+        )}
+      </div>
     </Modal>
   );
 }

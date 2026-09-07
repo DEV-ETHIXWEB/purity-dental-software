@@ -1,4 +1,4 @@
-import { formatCentsAsCurrency } from "@/lib/sample-data";
+import { formatCentsAsCurrency } from "@/lib/billing-format";
 
 export interface OutstandingByAgeChartProps {
   data: { bucket: string; amountCents: number }[];
@@ -12,6 +12,7 @@ export interface OutstandingByAgeChartProps {
  */
 export function OutstandingByAgeChart({ data }: OutstandingByAgeChartProps) {
   const max = Math.max(...data.map((d) => d.amountCents), 1);
+  const total = data.reduce((sum, d) => sum + d.amountCents, 0);
   const width = 400;
   const height = 10;
   const cornerRadius = height / 2;
@@ -19,7 +20,10 @@ export function OutstandingByAgeChart({ data }: OutstandingByAgeChartProps) {
   return (
     <div className="flex flex-col gap-3">
       {data.map((d) => {
-        const barWidth = Math.max((d.amountCents / max) * width, cornerRadius * 2);
+        // Floor tiny-but-nonzero amounts to a visible pill width so they
+        // don't disappear next to a much larger bucket — but a genuinely
+        // zero balance must render as zero width, not a misleading sliver.
+        const barWidth = d.amountCents <= 0 ? 0 : Math.max((d.amountCents / max) * width, cornerRadius * 2);
         return (
           <div key={d.bucket}>
             <div className="mb-1 flex items-center justify-between text-xs">
@@ -53,6 +57,10 @@ export function OutstandingByAgeChart({ data }: OutstandingByAgeChartProps) {
           </div>
         );
       })}
+      <div className="mt-1 flex items-center justify-between border-t border-border pt-3 text-sm font-semibold">
+        <span className="text-text-primary">Total Outstanding</span>
+        <span className="text-text-primary">{formatCentsAsCurrency(total)}</span>
+      </div>
     </div>
   );
 }

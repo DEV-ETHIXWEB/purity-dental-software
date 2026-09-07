@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { Calendar, Clock, User } from "lucide-react";
+import { Calendar, Clock, User as UserIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
-import type { AppointmentStatus, SampleAppointment } from "@/lib/sample-data";
+import type { AppointmentStatus, User, Appointment } from "@/generated/prisma/client";
 import { formatFriendlyDate, formatTime } from "./formatters";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
@@ -26,7 +26,7 @@ const STATUS_TONE: Record<AppointmentStatus, BadgeTone> = {
 };
 
 interface AppointmentCardProps {
-  appointment: SampleAppointment;
+  appointment: Appointment & { provider: Pick<User, "name"> };
   action?: ReactNode;
 }
 
@@ -50,8 +50,8 @@ export function AppointmentCard({ appointment, action }: AppointmentCardProps) {
               {formatTime(appointment.startTime)}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <User className="h-4 w-4" aria-hidden="true" />
-              {appointment.providerName}
+              <UserIcon className="h-4 w-4" aria-hidden="true" />
+              {appointment.provider.name}
             </span>
           </div>
         </div>

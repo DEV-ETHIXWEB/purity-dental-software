@@ -23,7 +23,12 @@
 
   /* Text */
   --color-text-primary: #3a3a3a;
-  --color-text-secondary: #6b7280;
+  /* Darkened from the original #6b7280 style-guide value — that hex measures
+     4.49:1 against --color-background (#f4f7fb), just under WCAG AA's 4.5:1
+     floor for normal text (confirmed via axe-core). #4b5563 keeps the same
+     gray family at 7.0:1, comfortably passing everywhere this token sits
+     directly on the page background (not just inside white cards). */
+  --color-text-secondary: #4b5563;
   --color-text-inverse: #ffffff;
 
   /* Surfaces */
@@ -163,4 +168,81 @@ body {
     rgba(74, 199, 179, 0.08) 60%,
     transparent 100%
   );
+}
+
+/*
+ * Motion system — restrained, purposeful transitions for overlays
+ * (modals, drawers, popovers) and transient feedback (inline success/error
+ * notices). Named keyframe/animation classes only, never inline `style=`
+ * (see the CSP note on .legend-swatch-dashed above — a dynamic inline style
+ * would be silently dropped in production). Timings: ~150-200ms for
+ * micro-feedback, ~200-250ms for panels, matching the app's overall
+ * "fast, subtle, expensive" motion feel rather than anything bouncy.
+ */
+@keyframes purity-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes purity-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes purity-scale-in {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes purity-scale-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.96) translateY(4px); }
+}
+@keyframes purity-slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes purity-slide-out-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+.animate-fade-in { animation: purity-fade-in 200ms ease-out both; }
+.animate-fade-out { animation: purity-fade-out 150ms ease-in both; }
+.animate-scale-in { animation: purity-scale-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-scale-out { animation: purity-scale-out 150ms ease-in both; }
+.animate-slide-in-left { animation: purity-slide-in-left 250ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-out-left { animation: purity-slide-out-left 200ms ease-in both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-fade-out,
+  .animate-scale-in,
+  .animate-scale-out,
+  .animate-slide-in-left,
+  .animate-slide-out-left {
+    animation: none;
+  }
+}
+
+/* Skeleton loading shimmer — a moving gradient highlight over a flat base,
+   driven by background-position so it stays CSP-safe (no inline `style=`,
+   just this one named class). */
+@keyframes purity-shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+.skeleton {
+  background-color: var(--color-surface-sunken);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.6) 50%,
+    transparent 100%
+  );
+  background-size: 60% 100%;
+  background-repeat: no-repeat;
+  animation: purity-shimmer 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
 }

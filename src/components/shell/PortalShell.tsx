@@ -23,13 +23,16 @@ export function PortalShell({
   user,
   searchPlaceholder,
   primaryAction,
+  patientsHref,
+  messagesHref,
+  hasUnreadNotifications,
 }: PortalShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen">
       <div className="hidden lg:block">
-        <Sidebar variant="desktop" navItems={navItems} homeHref={homeHref} />
+        <Sidebar variant="desktop" navItems={navItems} homeHref={homeHref} user={user} />
       </div>
 
       <MobileNavDrawer
@@ -37,6 +40,7 @@ export function PortalShell({
         onClose={() => setMobileNavOpen(false)}
         navItems={navItems}
         homeHref={homeHref}
+        user={user}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -45,6 +49,9 @@ export function PortalShell({
           user={user}
           searchPlaceholder={searchPlaceholder}
           primaryAction={primaryAction}
+          patientsHref={patientsHref}
+          messagesHref={messagesHref}
+          hasUnreadNotifications={hasUnreadNotifications}
         />
         <main className="flex-1 bg-background p-4 sm:p-6 lg:p-8">{children}</main>
       </div>

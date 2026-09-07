@@ -1,66 +1,59 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarX2, History } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CalendarIconFilled } from "@/components/ui/icons/purity-icons";
+import { HistoryIcon } from "@/components/ui/icons/purity-raster-icons";
 import { AppointmentCard } from "@/components/patient/AppointmentCard";
 import { EmptyState } from "@/components/patient/EmptyState";
 import { BookAppointmentFlow } from "@/components/patient/BookAppointmentFlow";
 import { CancelAppointmentModal } from "@/components/patient/CancelAppointmentModal";
 import { Button } from "@/components/ui/Button";
-import {
-  currentPatient,
-  type SampleAppointment,
-  type SampleOpenSlot,
-} from "@/lib/sample-data";
+import type { AppointmentWithPatientAndProvider } from "@/lib/data/appointments";
 
-const NOW = new Date("2026-08-24T12:00:00.000Z");
-let bookedCounter = 0;
+export interface PatientAppointmentsViewProps {
+  initialAppointments: AppointmentWithPatientAndProvider[];
+  providerId: string;
+  providerName: string;
+}
 
-export function PatientAppointmentsView({ initialAppointments }: { initialAppointments: SampleAppointment[] }) {
-  const [myAppointments, setMyAppointments] = useState(initialAppointments);
-  const [cancelTarget, setCancelTarget] = useState<SampleAppointment | null>(null);
+export function PatientAppointmentsView({
+  initialAppointments,
+  providerId,
+  providerName,
+}: PatientAppointmentsViewProps) {
+  const router = useRouter();
+  const [cancelTarget, setCancelTarget] = useState<AppointmentWithPatientAndProvider | null>(null);
 
-  const upcoming = useMemo(
-    () =>
-      myAppointments
-        .filter((a) => new Date(a.startTime) >= NOW && a.status !== "CANCELLED" && a.status !== "COMPLETED")
-        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
-    [myAppointments],
-  );
+  const upcoming = useMemo(() => {
+    const now = new Date();
+    return initialAppointments
+      .filter((a) => a.startTime >= now && a.status !== "CANCELLED" && a.status !== "COMPLETED")
+      .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+  }, [initialAppointments]);
 
   const past = useMemo(
     () =>
-      myAppointments
+      initialAppointments
         .filter((a) => a.status === "COMPLETED" || a.status === "CANCELLED" || a.status === "NO_SHOW")
-        .sort((a, b) => b.startTime.localeCompare(a.startTime)),
-    [myAppointments],
+        .sort((a, b) => b.startTime.getTime() - a.startTime.getTime()),
+    [initialAppointments],
   );
 
-  function handleBooked(slot: SampleOpenSlot, reason: string) {
-    bookedCounter += 1;
-    const newAppointment: SampleAppointment = {
-      id: `appt_patient_new_${bookedCounter}`,
-      patientId: currentPatient.id,
-      providerId: "prov_dr_avery",
-      providerName: slot.providerName,
-      procedureType: reason,
-      status: "SCHEDULED",
-      startTime: slot.startTime,
-      endTime: slot.endTime,
-    };
-    setMyAppointments((prev) => [...prev, newAppointment]);
-  }
-
-  function handleCancelConfirmed(appointmentId: string) {
-    setMyAppointments((prev) =>
-      prev.map((a) => (a.id === appointmentId ? { ...a, status: "CANCELLED" as const } : a)),
-    );
+  function handleCancelConfirmed() {
     setCancelTarget(null);
+    router.refresh();
   }
 
   return (
     <div className="flex flex-col gap-8">
-      <BookAppointmentFlow onBooked={handleBooked} />
+      {providerId && (
+        <BookAppointmentFlow
+          providerId={providerId}
+          providerName={providerName}
+          onBooked={() => router.refresh()}
+        />
+      )}
 
       <section aria-labelledby="upcoming-heading" className="flex flex-col gap-3">
         <h2 id="upcoming-heading" className="text-lg font-semibold text-text-primary">
@@ -88,7 +81,7 @@ export function PatientAppointmentsView({ initialAppointments }: { initialAppoin
           </ul>
         ) : (
           <EmptyState
-            icon={CalendarX2}
+            icon={CalendarIconFilled}
             title="No upcoming visits"
             description="Use the booking form above whenever you're ready to schedule your next visit."
           />
@@ -109,7 +102,7 @@ export function PatientAppointmentsView({ initialAppointments }: { initialAppoin
           </ul>
         ) : (
           <EmptyState
-            icon={History}
+            icon={HistoryIcon}
             title="No past visits yet"
             description="Your visit history will show up here after your first completed appointment."
           />

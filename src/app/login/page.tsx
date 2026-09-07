@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentSession, dashboardPathForRole } from "@/lib/auth/session";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export const metadata: Metadata = {
@@ -22,14 +23,8 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-full w-full flex-1 items-center justify-center bg-surface-muted px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-text-primary">Purity</h1>
-          <p className="text-sm text-text-secondary">Dental clinic practice management</p>
-        </div>
-        <LoginForm />
-      </div>
-    </div>
+    <AuthLayout>
+      <LoginForm />
+    </AuthLayout>
   );
 }

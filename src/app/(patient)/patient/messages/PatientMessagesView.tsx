@@ -1,28 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { PatientMessageThread } from "@/components/patient/PatientMessageThread";
-import { type SampleMessage } from "@/lib/sample-data";
+import { sendPatientMessage } from "@/lib/actions/send-message";
+import type { Message } from "@/generated/prisma/client";
 
-export function PatientMessagesView({ initialMessages }: { initialMessages: SampleMessage[] }) {
-  const [messages, setMessages] = useState(initialMessages);
+export interface PatientMessagesViewProps {
+  initialMessages: Message[];
+  patientId: string;
+  patientFirstName: string;
+}
 
-  function handleSend(body: string) {
-    const newMessage: SampleMessage = {
-      id: `msg_patient_local_${Date.now()}`,
-      conversationId: initialMessages[0]?.conversationId ?? "conv_sarah_johnson",
-      sender: "PATIENT",
-      body,
-      sentAt: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, newMessage]);
+export function PatientMessagesView({ initialMessages, patientId, patientFirstName }: PatientMessagesViewProps) {
+  const router = useRouter();
+
+  async function handleSend(body: string) {
+    const result = await sendPatientMessage(patientId, body);
+    if (result.ok) router.refresh();
   }
 
   return (
     <Card className="overflow-hidden">
       <div className="h-[calc(100vh-14rem)] min-h-[420px]">
-        <PatientMessageThread messages={messages} onSend={handleSend} />
+        <PatientMessageThread messages={initialMessages} patientFirstName={patientFirstName} onSend={handleSend} />
       </div>
     </Card>
   );

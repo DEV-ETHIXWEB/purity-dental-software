@@ -6,3 +6,5 @@ export * from "./Input";
 export * from "./Modal";
 export * from "./Tabs";
 export * from "./Table";
+export * from "./Skeleton";
+export * from "./StatStrip";

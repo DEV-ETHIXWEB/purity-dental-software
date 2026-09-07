@@ -2,9 +2,9 @@ import { z } from "zod";
 
 /**
  * Validation schema for the Receptionist portal's patient registration form.
- * Field shapes mirror `SamplePatient` in `sample-data.ts` (first/last name,
- * DOB, sex, phone, email, insurance provider/plan) so a valid submission
- * maps directly onto that interface.
+ * Field shapes mirror the `Patient` Prisma model (first/last name, DOB, sex,
+ * phone, email, insurance provider/plan) so a valid submission maps directly
+ * onto `prisma.patient.create()`'s input.
  */
 export const patientRegistrationSchema = z.object({
   firstName: z

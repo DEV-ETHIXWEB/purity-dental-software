@@ -173,8 +173,20 @@ function buildCsp(nonce: string): string {
     `base-uri 'self'`,
     `form-action 'self'`,
     `frame-ancestors 'none'`,
-    `upgrade-insecure-requests`,
   ];
+  // `upgrade-insecure-requests` only makes sense once the app is actually
+  // served over HTTPS (production). In dev, `next dev` serves plain
+  // http://localhost with no TLS listener at all — Chromium happens to
+  // special-case `localhost` as exempt from this directive, but Safari/
+  // WebKit does not: it dutifully tries to upgrade every subresource
+  // fetch (JS chunks, CSS, fonts) to https://localhost, which fails with
+  // a TLS error since nothing is listening there, and the app never
+  // hydrates. Confirmed via a WebKit-engine reproduction. Gating this to
+  // production only (mirroring the `unsafe-eval` dev/prod split above)
+  // fixes Safari in local dev without weakening the real production CSP.
+  if (!isDev) {
+    directives.push(`upgrade-insecure-requests`);
+  }
   return directives.join("; ");
 }
 

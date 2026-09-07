@@ -20,6 +20,12 @@ const nextConfig: NextConfig = {
   // to every client) consistent with the CSP/security-headers work already
   // done in src/middleware.ts.
   poweredByHeader: false,
+
+  // The dev-only route indicator (a <nextjs-portal> element `next dev`
+  // injects at the top of <body>) sits near the sidebar logo and reads as
+  // a broken/placeholder image at a glance. It never renders in production
+  // (`next build && next start`) — this only affects local dev.
+  devIndicators: false,
 };
 
 export default nextConfig;

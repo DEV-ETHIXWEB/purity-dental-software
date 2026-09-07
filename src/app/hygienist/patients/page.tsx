@@ -1,14 +1,21 @@
 import type { Metadata } from "next";
 import { PatientsTable } from "@/components/dentist/PatientsTable";
 import { OverdueRecallsCard } from "@/components/hygienist/OverdueRecallsCard";
-import { patients } from "@/lib/sample-data";
+import { requireRole } from "@/lib/auth/authorize";
+import { listPatients } from "@/lib/data/patients";
 
 export const metadata: Metadata = {
   title: "Patients",
   description: "Search and manage the practice's patient roster.",
 };
 
-export default function HygienistPatientsPage() {
+export default async function HygienistPatientsPage({
+  searchParams,
+}: PageProps<"/hygienist/patients">) {
+  const session = await requireRole(["HYGIENIST", "ADMIN"]);
+  const patients = await listPatients(session.user.organizationId);
+  const { q } = await searchParams;
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -20,7 +27,7 @@ export default function HygienistPatientsPage() {
 
       <OverdueRecallsCard patients={patients} />
 
-      <PatientsTable patients={patients} basePath="/hygienist" />
+      <PatientsTable patients={patients} basePath="/hygienist" initialQuery={typeof q === "string" ? q : undefined} />
     </div>
   );
 }

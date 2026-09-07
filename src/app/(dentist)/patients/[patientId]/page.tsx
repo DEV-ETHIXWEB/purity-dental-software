@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { FileText } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/Card";
+import { UploadIcon, ReportsIcon, XRaysIcon } from "@/components/ui/icons/purity-raster-icons";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { PatientProfileHeader } from "@/components/dentist/PatientProfileHeader";
@@ -10,23 +10,17 @@ import { BillingDetailsCard } from "@/components/dentist/BillingDetailsCard";
 import { TreatmentPlanTable } from "@/components/dentist/TreatmentPlanTable";
 import { PerioChartCard } from "@/components/dentist/PerioChartCard";
 import { ToothChart } from "@/components/dentist/ToothChart";
-import {
-  getPatientById,
-  patientFullName,
-  patients,
-  treatmentPlanForPatient,
-  perioChartForPatient,
-} from "@/lib/sample-data";
-
-export function generateStaticParams() {
-  return patients.map((p) => ({ patientId: p.id }));
-}
+import { requireRole } from "@/lib/auth/authorize";
+import { getPatientById } from "@/lib/data/patients";
+import { patientFullName } from "@/lib/patient-format";
+import { treatmentPlanForPatient, perioChartForPatient } from "@/lib/data/treatment";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/patients/[patientId]">): Promise<Metadata> {
+  const session = await requireRole(["DENTIST", "ADMIN"]);
   const { patientId } = await params;
-  const patient = getPatientById(patientId);
+  const patient = await getPatientById(session.user.organizationId, patientId);
   return {
     title: patient ? patientFullName(patient) : "Patient not found",
     description: patient
@@ -38,39 +32,41 @@ export async function generateMetadata({
 export default async function PatientProfilePage({
   params,
 }: PageProps<"/patients/[patientId]">) {
+  const session = await requireRole(["DENTIST", "ADMIN"]);
   const { patientId } = await params;
-  const patient = getPatientById(patientId);
+  const patient = await getPatientById(session.user.organizationId, patientId);
   if (!patient) notFound();
 
-  const treatmentPlan = treatmentPlanForPatient(patient.id);
-  const perioEntry = perioChartForPatient(patient.id);
+  const [treatmentPlan, perioEntry] = await Promise.all([
+    treatmentPlanForPatient(session.user.organizationId, patient.id),
+    perioChartForPatient(session.user.organizationId, patient.id),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
-      <PatientProfileHeader patient={patient} />
+      <PatientProfileHeader patient={patient} canLogTreatment />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="flex flex-col gap-6 lg:col-span-1">
-          <ContactDetailsCard patient={patient} />
-          <BillingDetailsCard patient={patient} />
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Medical History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {patient.medicalAlerts.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {patient.medicalAlerts.map((alert) => (
-                    <Badge key={alert} tone="error">
-                      {alert}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-text-secondary">No known alerts on file.</p>
-              )}
-            </CardContent>
+        <div className="lg:col-span-1">
+          <Card className="divide-y divide-border">
+            <ContactDetailsCard patient={patient} canEdit />
+            <BillingDetailsCard patient={patient} canEdit />
+            <section className="p-4">
+              <h3 className="text-[15px] font-semibold tracking-tight text-text-primary">Medical History</h3>
+              <div className="mt-3">
+                {patient.medicalAlerts.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {patient.medicalAlerts.map((alert) => (
+                      <Badge key={alert} tone="error">
+                        {alert}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-text-secondary">No known alerts on file.</p>
+                )}
+              </div>
+            </section>
           </Card>
         </div>
 
@@ -95,7 +91,11 @@ export default async function PatientProfilePage({
 
                 <TabsContent value="documents">
                   <div className="flex flex-col items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-border-strong py-12 text-center">
-                    <FileText className="h-8 w-8 text-text-secondary" aria-hidden="true" />
+                    <div className="flex items-center gap-3">
+                      <ReportsIcon className="h-7 w-7" aria-hidden="true" />
+                      <XRaysIcon className="h-7 w-7" aria-hidden="true" />
+                      <UploadIcon className="h-7 w-7" aria-hidden="true" />
+                    </div>
                     <p className="text-sm font-medium text-text-primary">No documents uploaded</p>
                     <p className="max-w-xs text-xs text-text-secondary">
                       X-rays, consent forms, and referral letters for {patientFullName(patient)} will

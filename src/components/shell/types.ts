@@ -11,6 +11,8 @@ export interface ShellNavItem {
 export interface ShellUser {
   name: string;
   avatarUrl?: string;
+  /** Human-readable role label shown in the sidebar's account area (e.g. "Dentist"). */
+  role?: string;
 }
 
 /**
@@ -28,10 +30,16 @@ export interface ShellConfig {
   user: ShellUser;
   /** Placeholder text for the top bar's global search input. */
   searchPlaceholder?: string;
-  /** Primary top-bar call-to-action button. Omit to hide it entirely. */
+  /** Primary top-bar call-to-action button. Omit to hide it entirely. `href` is required — a button with nothing to link to is dead UI. */
   primaryAction?: {
     label: string;
     icon: ShellIconKey;
-    href?: string;
+    href: string;
   };
+  /** This portal's patient list route — the top bar's search form submits here as `?q=`. */
+  patientsHref: string;
+  /** This portal's Messages route, if it has one (Hygienist/Patient only) — shows the top bar's Messages icon. Omit to hide it. */
+  messagesHref?: string;
+  /** Whether to show the top bar notification dot — computed server-side from real unread messages / overdue follow-ups, never hardcoded on. */
+  hasUnreadNotifications?: boolean;
 }

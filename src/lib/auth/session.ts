@@ -25,6 +25,8 @@ export interface SessionUser {
   role: UserRole;
   email: string;
   name: string;
+  phone: string | null;
+  avatarUrl: string | null;
 }
 
 export interface CurrentSession {
@@ -100,6 +102,8 @@ export async function getCurrentSession(): Promise<CurrentSession | null> {
         role: session.user.role,
         email: session.user.email,
         name: session.user.name,
+        phone: session.user.phone,
+        avatarUrl: session.user.avatarUrl,
       },
     };
   } catch {

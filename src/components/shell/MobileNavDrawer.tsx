@@ -1,25 +1,51 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { Sidebar } from "./Sidebar";
-import type { ShellNavItem } from "./types";
+import type { ShellNavItem, ShellUser } from "./types";
 
 export interface MobileNavDrawerProps {
   open: boolean;
   onClose: () => void;
   navItems: ShellNavItem[];
   homeHref: string;
+  user: ShellUser;
 }
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/** Must match the .animate-fade-out/.animate-slide-out-left duration in globals.css. */
+const CLOSE_ANIMATION_MS = 200;
+
 /** Slide-out navigation drawer for viewports below the `lg` breakpoint. */
-export function MobileNavDrawer({ open, onClose, navItems, homeHref }: MobileNavDrawerProps) {
+export function MobileNavDrawer({ open, onClose, navItems, homeHref, user }: MobileNavDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  // See Modal.tsx's identical pattern for why this is adjusted during
+  // render rather than in an effect body.
+  const [rendered, setRendered] = useState(open);
+  const [closing, setClosing] = useState(false);
+
+  if (open && !rendered) {
+    setRendered(true);
+    setClosing(false);
+  }
+  if (!open && rendered && !closing) {
+    setClosing(true);
+  }
+
+  useEffect(() => {
+    if (!closing) return;
+    const timer = window.setTimeout(() => {
+      setRendered(false);
+      setClosing(false);
+    }, CLOSE_ANIMATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [closing]);
 
   useEffect(() => {
     if (!open) return;
@@ -38,11 +64,15 @@ export function MobileNavDrawer({ open, onClose, navItems, homeHref }: MobileNav
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!rendered) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 lg:hidden">
-      <div className="absolute inset-0 bg-[#111827]/40" aria-hidden="true" onClick={onClose} />
+    <div className={cn("fixed inset-0 z-50 lg:hidden", closing && "pointer-events-none")}>
+      <div
+        className={cn("absolute inset-0 bg-[#111827]/40", closing ? "animate-fade-out" : "animate-fade-in")}
+        aria-hidden="true"
+        onClick={onClose}
+      />
       <div
         ref={panelRef}
         role="dialog"
@@ -51,7 +81,10 @@ export function MobileNavDrawer({ open, onClose, navItems, homeHref }: MobileNav
         onKeyDown={(e) => {
           if (e.key === "Escape") onClose();
         }}
-        className="relative z-10 flex h-full w-72 flex-col bg-surface shadow-popover"
+        className={cn(
+          "relative z-10 flex h-full w-72 flex-col bg-surface shadow-popover",
+          closing ? "animate-slide-out-left" : "animate-slide-in-left",
+        )}
       >
         <button
           type="button"
@@ -61,7 +94,7 @@ export function MobileNavDrawer({ open, onClose, navItems, homeHref }: MobileNav
         >
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
-        <Sidebar variant="drawer" onNavigate={onClose} navItems={navItems} homeHref={homeHref} />
+        <Sidebar variant="drawer" onNavigate={onClose} navItems={navItems} homeHref={homeHref} user={user} />
       </div>
     </div>,
     document.body,

@@ -1,48 +1,41 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { MessagesSquare } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ChatIconFilled } from "@/components/ui/icons/purity-icons";
 import { Card } from "@/components/ui/Card";
 import { ConversationList } from "@/components/hygienist/ConversationList";
 import { MessageThread } from "@/components/hygienist/MessageThread";
 import { RecallAlertModal } from "@/components/hygienist/RecallAlertModal";
-import {
-  type SampleConversation,
-  type SampleMessage,
-  getPatientById,
-  patientFullName,
-  messagesForConversation,
-} from "@/lib/sample-data";
+import { sendPatientMessage } from "@/lib/actions/send-message";
+import { patientFullName } from "@/lib/patient-format";
+import type { ConversationWithUnread } from "@/lib/data/messaging";
 import { cn } from "@/lib/cn";
 
 export interface MessagesViewProps {
-  conversations: SampleConversation[];
+  conversations: ConversationWithUnread[];
+  currentUserName: string;
 }
 
 /**
- * Client-side conversation list + thread orchestrator. All message state
- * (new outgoing messages, unread counts, recall-alert sends) lives only in
- * React state for this session — there is no backend yet, so nothing here
- * persists across a reload.
+ * Client-side conversation list + thread orchestrator, backed by real
+ * `Conversation`/`Message` rows (see `src/lib/data/messaging.ts` and the
+ * `sendPatientMessage` Server Action). Local `unreadCount` overrides are
+ * still client-only (marking a thread "read" on open) — there's no
+ * read-receipt table, so this just hides the badge for the rest of the
+ * session rather than persisting read state.
  */
-export function MessagesView({ conversations: initialConversations }: MessagesViewProps) {
+export function MessagesView({ conversations: initialConversations, currentUserName }: MessagesViewProps) {
+  const router = useRouter();
   const [conversations, setConversations] = useState(initialConversations);
   const [selectedId, setSelectedId] = useState<string | null>(
     initialConversations[0]?.id ?? null,
   );
-  const [extraMessages, setExtraMessages] = useState<Record<string, SampleMessage[]>>({});
   const [recallModalOpen, setRecallModalOpen] = useState(false);
   const [threadOpenOnMobile, setThreadOpenOnMobile] = useState(false);
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
-  const selectedPatient = selectedConversation ? getPatientById(selectedConversation.patientId) : null;
-
-  const threadMessages = useMemo(() => {
-    if (!selectedConversation) return [];
-    const base = messagesForConversation(selectedConversation.id);
-    const extra = extraMessages[selectedConversation.id] ?? [];
-    return [...base, ...extra];
-  }, [selectedConversation, extraMessages]);
+  const selectedPatient = selectedConversation?.patient ?? null;
 
   function handleSelect(conversationId: string) {
     setSelectedId(conversationId);
@@ -52,19 +45,10 @@ export function MessagesView({ conversations: initialConversations }: MessagesVi
     );
   }
 
-  function handleSend(body: string) {
+  async function handleSend(body: string) {
     if (!selectedConversation) return;
-    const newMessage: SampleMessage = {
-      id: `msg_local_${Date.now()}`,
-      conversationId: selectedConversation.id,
-      sender: "PROVIDER",
-      body,
-      sentAt: new Date().toISOString(),
-    };
-    setExtraMessages((prev) => ({
-      ...prev,
-      [selectedConversation.id]: [...(prev[selectedConversation.id] ?? []), newMessage],
-    }));
+    const result = await sendPatientMessage(selectedConversation.patientId, body);
+    if (result.ok) router.refresh();
   }
 
   return (
@@ -100,14 +84,15 @@ export function MessagesView({ conversations: initialConversations }: MessagesVi
               </button>
               <MessageThread
                 patient={selectedPatient}
-                messages={threadMessages}
+                messages={selectedConversation.messages}
+                currentUserName={currentUserName}
                 onSend={handleSend}
                 onSendRecallAlert={() => setRecallModalOpen(true)}
               />
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
-              <MessagesSquare className="h-8 w-8 text-text-secondary" aria-hidden="true" />
+              <ChatIconFilled className="h-8 w-8" aria-hidden="true" />
               <p className="text-sm font-medium text-text-primary">Select a conversation</p>
               <p className="max-w-[240px] text-xs text-text-secondary">
                 Choose a patient from the list to view and reply to their messages.

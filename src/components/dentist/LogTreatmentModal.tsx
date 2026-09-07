@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { formatCentsAsCurrency } from "@/lib/sample-data";
+import { formatCentsAsCurrency } from "@/lib/billing-format";
 
 interface ProcedureOption {
   id: string;
@@ -24,7 +24,7 @@ export interface LogTreatmentModalProps {
   open: boolean;
   onClose: () => void;
   patientName: string;
-  onSendToBilling: (selected: ProcedureOption[], notes: string) => void;
+  onSendToBilling: (selected: ProcedureOption[], notes: string) => void | Promise<void>;
 }
 
 export function LogTreatmentModal({
@@ -35,6 +35,7 @@ export function LogTreatmentModal({
 }: LogTreatmentModalProps) {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const selected = PROCEDURE_OPTIONS.filter((p) => checked[p.id]);
   const total = selected.reduce((sum, p) => sum + p.priceCents, 0);
@@ -43,11 +44,16 @@ export function LogTreatmentModal({
     setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
-  function handleSend() {
-    onSendToBilling(selected, notes);
-    setChecked({});
-    setNotes("");
-    onClose();
+  async function handleSend() {
+    setSubmitting(true);
+    try {
+      await onSendToBilling(selected, notes);
+      setChecked({});
+      setNotes("");
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function handleCancel() {
@@ -64,11 +70,13 @@ export function LogTreatmentModal({
       description={`Record procedures performed for ${patientName}.`}
       footer={
         <>
-          <Button variant="outline" onClick={handleCancel}>
+          <Button variant="outline" onClick={handleCancel} disabled={submitting}>
             Cancel
           </Button>
-          <Button onClick={handleSend} disabled={selected.length === 0}>
-            Send to Billing{selected.length > 0 ? ` (${formatCentsAsCurrency(total)})` : ""}
+          <Button onClick={handleSend} disabled={selected.length === 0 || submitting}>
+            {submitting
+              ? "Sending…"
+              : `Send to Billing${selected.length > 0 ? ` (${formatCentsAsCurrency(total)})` : ""}`}
           </Button>
         </>
       }
@@ -87,7 +95,7 @@ export function LogTreatmentModal({
                 type="checkbox"
                 checked={!!checked[option.id]}
                 onChange={() => toggle(option.id)}
-                className="h-4 w-4 rounded border-border-strong text-[var(--color-brand-blue)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+                className="h-4 w-4 rounded border-border-strong accent-[var(--color-brand-blue)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
               />
               <span className="text-text-primary">{option.label}</span>
             </span>

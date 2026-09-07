@@ -1,28 +1,23 @@
 "use client";
 
-import { MessagesSquare } from "lucide-react";
+import { ChatIconFilled } from "@/components/ui/icons/purity-icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { RecallStatusBadge } from "@/components/dentist/PatientStatusBadge";
-import {
-  type SampleConversation,
-  getPatientById,
-  patientFullName,
-  lastMessageForConversation,
-} from "@/lib/sample-data";
+import { patientFullName } from "@/lib/patient-format";
+import type { ConversationWithUnread } from "@/lib/data/messaging";
 import { cn } from "@/lib/cn";
 
-function formatTimestamp(iso: string) {
-  const date = new Date(iso);
-  const today = new Date("2026-08-24T12:00:00.000Z");
-  const isToday = date.toISOString().slice(0, 10) === today.toISOString().slice(0, 10);
+function formatTimestamp(date: Date) {
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
   return isToday
     ? date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
     : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export interface ConversationListProps {
-  conversations: SampleConversation[];
+  conversations: ConversationWithUnread[];
   selectedId: string | null;
   onSelect: (conversationId: string) => void;
 }
@@ -31,7 +26,7 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
   if (conversations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center">
-        <MessagesSquare className="h-8 w-8 text-text-secondary" aria-hidden="true" />
+        <ChatIconFilled className="h-8 w-8" aria-hidden="true" />
         <p className="text-sm font-medium text-text-primary">No conversations yet</p>
         <p className="max-w-[220px] text-xs text-text-secondary">
           Messages from patients will show up here once they reach out.
@@ -41,21 +36,19 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
   }
 
   return (
-    <ul role="listbox" aria-label="Conversations" className="flex flex-col divide-y divide-border">
+    <ul aria-label="Conversations" className="flex flex-col divide-y divide-border">
       {conversations.map((conversation) => {
-        const patient = getPatientById(conversation.patientId);
-        if (!patient) return null;
+        const patient = conversation.patient;
         const name = patientFullName(patient);
-        const last = lastMessageForConversation(conversation.id);
+        const last = conversation.messages[conversation.messages.length - 1] ?? null;
         const isSelected = conversation.id === selectedId;
-        const isOverdue = patient.recallStatus.toLowerCase().includes("overdue");
+        const isOverdue = (patient.recallStatus ?? "").toLowerCase().includes("overdue");
 
         return (
           <li key={conversation.id}>
             <button
               type="button"
-              role="option"
-              aria-selected={isSelected}
+              aria-current={isSelected ? "true" : undefined}
               onClick={() => onSelect(conversation.id)}
               className={cn(
                 "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors",

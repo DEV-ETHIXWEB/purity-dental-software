@@ -1,5 +1,5 @@
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
-import type { InvoiceStatus } from "@/lib/sample-data";
+import type { InvoiceStatus } from "@/generated/prisma/client";
 
 const TONE: Record<InvoiceStatus, BadgeTone> = {
   PAID: "success",

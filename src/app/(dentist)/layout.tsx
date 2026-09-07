@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { PortalShell } from "@/components/shell/PortalShell";
 import { dentistShellConfig } from "@/components/shell/nav-config";
 import { requirePortalRole } from "@/lib/auth/require-portal";
+import { listFollowUps } from "@/lib/data/patients";
 
 // Authoritative auth/RBAC gate for the Dentist portal (root-level route
 // group). `src/middleware.ts` already redirects unauthenticated requests
@@ -14,7 +15,17 @@ export default async function DentistPortalLayout({
 }: {
   children: ReactNode;
 }) {
-  await requirePortalRole("DENTIST");
+  const session = await requirePortalRole("DENTIST");
+  const followUps = await listFollowUps(session.user.organizationId, 1);
 
-  return <PortalShell {...dentistShellConfig}>{children}</PortalShell>;
+  return (
+    <PortalShell
+      {...dentistShellConfig(
+        { name: session.user.name, avatarUrl: session.user.avatarUrl ?? undefined, role: "Dentist" },
+        followUps.length > 0,
+      )}
+    >
+      {children}
+    </PortalShell>
+  );
 }

@@ -1,23 +1,23 @@
 /** Shared date/time formatting helpers for the Patient portal's friendlier copy. */
 
-export function formatFriendlyDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
+export function formatFriendlyDate(date: Date) {
+  return date.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
   });
 }
 
-export function formatShortDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
+export function formatShortDate(date: Date) {
+  return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 }
 
-export function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-US", {
+export function formatTime(date: Date) {
+  return date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
   });

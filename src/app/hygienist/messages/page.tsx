@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 import { MessagesView } from "@/components/hygienist/MessagesView";
-import { conversations } from "@/lib/sample-data";
+import { requireRole } from "@/lib/auth/authorize";
+import { listConversations } from "@/lib/data/messaging";
 
 export const metadata: Metadata = {
   title: "Messages",
   description: "Message patients directly and send overdue recall alerts.",
 };
 
-export default function HygienistMessagesPage() {
+export default async function HygienistMessagesPage() {
+  const session = await requireRole(["HYGIENIST", "ADMIN"]);
+  const conversations = await listConversations(session.user.organizationId);
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -17,7 +21,7 @@ export default function HygienistMessagesPage() {
         </p>
       </div>
 
-      <MessagesView conversations={conversations} />
+      <MessagesView conversations={conversations} currentUserName={session.user.name} />
     </div>
   );
 }

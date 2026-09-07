@@ -1,46 +1,66 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Loader2, UserRound } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { SwapIcon } from "@/components/ui/icons/purity-icons";
+import { CheckmarkIcon } from "@/components/ui/icons/purity-raster-icons";
 import { cn } from "@/lib/cn";
-import { alternateProviders, currentProvider, type SampleProvider } from "@/lib/sample-data";
+import { sendPatientMessage } from "@/lib/actions/send-message";
+import type { User } from "@/generated/prisma/client";
+
+export interface SwitchDentistModalProps {
+  patientId: string;
+  currentProviderName: string;
+  alternateProviders: User[];
+}
 
 /**
  * "Switch dentist" UI affordance: lists alternate providers and lets the
- * patient request a switch. Purely a UI confirmation flow — no real
- * reassignment/backend logic happens.
+ * patient request a switch. No real provider reassignment happens (that's a
+ * front-desk workflow decision, not a self-service one) — but the request
+ * itself is a real message on the patient's conversation thread via
+ * `sendPatientMessage`, so "we've let our front desk know" is actually true
+ * rather than a UI-only confirmation with nothing behind it.
  */
-export function SwitchDentistModal() {
+export function SwitchDentistModal({ patientId, currentProviderName, alternateProviders }: SwitchDentistModalProps) {
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<SampleProvider | null>(null);
+  const [selected, setSelected] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [requested, setRequested] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function handleClose() {
     setOpen(false);
-    // Reset after the close animation would run, so reopening starts fresh.
     window.setTimeout(() => {
       setSelected(null);
       setSubmitting(false);
       setRequested(false);
+      setError(null);
     }, 200);
   }
 
-  function handleRequestSwitch() {
+  async function handleRequestSwitch() {
     if (!selected) return;
     setSubmitting(true);
-    window.setTimeout(() => {
-      setSubmitting(false);
+    setError(null);
+    const result = await sendPatientMessage(
+      patientId,
+      `I'd like to switch from ${currentProviderName} to ${selected.name}, please.`,
+    );
+    setSubmitting(false);
+    if (result.ok) {
       setRequested(true);
-    }, 700);
+    } else {
+      setError(result.error ?? "Something went wrong. Please try again.");
+    }
   }
 
   return (
     <>
       <Button variant="outline" size="sm" className="min-h-11 self-start" onClick={() => setOpen(true)}>
-        <UserRound className="h-4 w-4" aria-hidden="true" />
+        <SwapIcon className="h-4 w-4" aria-hidden="true" />
         Switch dentist
       </Button>
 
@@ -51,13 +71,13 @@ export function SwitchDentistModal() {
         description={
           requested
             ? undefined
-            : `You're currently seeing ${currentProvider.name}. Choose another provider to request a switch.`
+            : `You're currently seeing ${currentProviderName}. Choose another provider to request a switch.`
         }
       >
         {requested ? (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success-bg text-success">
-              <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
+              <CheckmarkIcon className="h-6 w-6" aria-hidden="true" />
             </div>
             <div>
               <p className="text-sm font-semibold text-text-primary">Switch requested</p>
@@ -91,7 +111,15 @@ export function SwitchDentistModal() {
                   </button>
                 </li>
               ))}
+              {alternateProviders.length === 0 && (
+                <li className="text-sm text-text-secondary">No other providers available right now.</li>
+              )}
             </ul>
+            {error && (
+              <p role="alert" className="text-sm text-error">
+                {error}
+              </p>
+            )}
             <Button
               onClick={handleRequestSwitch}
               disabled={!selected || submitting}
