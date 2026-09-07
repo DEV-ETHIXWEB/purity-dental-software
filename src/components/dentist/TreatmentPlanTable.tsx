@@ -8,7 +8,7 @@ import {
   TableCell,
 } from "@/components/ui/Table";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
-import type { SampleTreatmentPlanItem, TreatmentPlanStatus } from "@/lib/sample-data";
+import type { TreatmentPlanItem, TreatmentPlanStatus } from "@/generated/prisma/client";
 
 const STATUS_TONE: Record<TreatmentPlanStatus, BadgeTone> = {
   PLANNED: "brand-blue",
@@ -24,7 +24,7 @@ const STATUS_LABEL: Record<TreatmentPlanStatus, string> = {
   DECLINED: "Declined",
 };
 
-export function TreatmentPlanTable({ items }: { items: SampleTreatmentPlanItem[] }) {
+export function TreatmentPlanTable({ items }: { items: TreatmentPlanItem[] }) {
   if (items.length === 0) {
     return <p className="text-sm text-text-secondary">No treatment plan items on file.</p>;
   }

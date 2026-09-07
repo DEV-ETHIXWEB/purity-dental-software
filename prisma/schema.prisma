@@ -56,11 +56,24 @@ enum InvoiceStatus {
   VOID
 }
 
+enum InvoicePaymentMethod {
+  VISA
+  MASTERCARD
+  CARECREDIT
+  HSA
+  CASH
+}
+
 enum PatientSex {
   MALE
   FEMALE
   OTHER
   UNKNOWN
+}
+
+enum PatientStatus {
+  ACTIVE
+  INACTIVE
 }
 
 // ---------------------------------------------------------------------------
@@ -83,6 +96,8 @@ model Organization {
   perioChartEntries  PerioChartEntry[]
   invoices         Invoice[]
   auditLogs        AuditLog[]
+  conversations    Conversation[]
+  waitlistEntries  WaitlistEntry[]
 
   @@map("organizations")
 }
@@ -119,6 +134,9 @@ model User {
 
   // A staff user (dentist/hygienist) can be the treating provider on many appointments.
   appointmentsAsProvider Appointment[] @relation("AppointmentProvider")
+
+  // A staff user (dentist/hygienist) can be the treating provider on many invoices.
+  invoicesAsProvider Invoice[] @relation("InvoiceProvider")
 
   // A PATIENT-role user is linked one-to-one with their clinical Patient record.
   patientProfile Patient? @relation("PatientUser")
@@ -185,6 +203,7 @@ model Patient {
   lastName       String
   dateOfBirth    DateTime
   sex            PatientSex  @default(UNKNOWN)
+  status         PatientStatus @default(ACTIVE)
   phone          String?
   email          String?
   photoUrl       String?
@@ -211,6 +230,8 @@ model Patient {
   treatmentPlanItems TreatmentPlanItem[]
   perioChartEntries  PerioChartEntry[]
   invoices           Invoice[]
+  conversation       Conversation?
+  waitlistEntries    WaitlistEntry[]
 
   @@index([organizationId])
   @@index([organizationId, lastName, firstName])
@@ -229,6 +250,14 @@ model Appointment {
   status         AppointmentStatus @default(SCHEDULED)
   procedureType  String
   notes          String?
+
+  /// Whether this appointment was completed at/near its scheduled start
+  /// time. Null until the visit is completed. There is no real check-in/
+  /// arrival timestamp captured anywhere in the app yet, so this is a
+  /// best-effort punctuality signal (seeded with a realistic distribution
+  /// for historical data) rather than a precisely measured one — see the
+  /// Dashboard "On time %" stat in src/lib/data/appointments.ts.
+  completedOnTime Boolean?
 
   // Stored as UTC instants; render in Organization.timezone at the UI layer.
   startTime DateTime
@@ -304,12 +333,35 @@ model PerioChartEntry {
 
 model Invoice {
   id             String        @id @default(cuid())
+  /// DB-sequence-backed human-readable number (rendered as "INV-{1000 +
+  /// invoiceSeq}") — race-safe under concurrent creates, unlike a
+  /// count()-based scheme. See `invoiceNumber()` in src/lib/data/billing.ts.
+  invoiceSeq     Int           @default(autoincrement())
   organizationId String
   patientId      String
+  /// The dentist/hygienist who performed the billed treatment ("Treating
+  /// Dentist" on the invoice detail view). Nullable — invoices created
+  /// before this column existed, or created manually without picking a
+  /// provider, won't have one.
+  providerId     String?
   status         InvoiceStatus @default(PENDING)
   issuedAt       DateTime      @default(now())
   dueAt          DateTime
+  /// Amount actually owed — the single source of truth used everywhere
+  /// (invoice list "Amount" column, Patient.balanceCents increment/
+  /// decrement, billingSummary aggregates). Computed once at creation as
+  /// subtotal (sum of line items) - insuranceAdjustmentCents + taxCents;
+  /// never re-derive it differently in a different view, or amounts will
+  /// disagree across pages.
   totalCents     Int           @default(0)
+  /// Placeholder heuristic (not real insurance-plan adjudication): a flat
+  /// discount applied at creation time when the patient has insurance on
+  /// file. See createInvoiceFromTreatment in src/lib/data/billing.ts.
+  insuranceAdjustmentCents Int @default(0)
+  /// Placeholder flat-rate tax applied at creation time.
+  taxCents       Int           @default(0)
+  paymentMethod     InvoicePaymentMethod?
+  paymentMethodLast4 String?
   notes          String?
 
   createdAt DateTime @default(now())
@@ -317,11 +369,13 @@ model Invoice {
 
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   patient      Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  provider     User?             @relation("InvoiceProvider", fields: [providerId], references: [id], onDelete: SetNull)
   lineItems    InvoiceLineItem[]
 
   @@index([organizationId])
   @@index([organizationId, status])
   @@index([patientId])
+  @@index([providerId])
   @@map("invoices")
 }
 
@@ -330,6 +384,11 @@ model InvoiceLineItem {
   invoiceId   String
   description String
   procedureCode String?
+  /// Tooth number/quadrant this line item applies to, e.g. "#14" or "Upper
+  /// Left" — same shape as TreatmentPlanItem.tooth/.quadrant above, shown
+  /// as a single "Tooth / Quadrant" column on the invoice detail view.
+  tooth       String?
+  quadrant    String?
   quantity    Int      @default(1)
   unitPriceCents Int
   createdAt   DateTime @default(now())
@@ -339,6 +398,74 @@ model InvoiceLineItem {
 
   @@index([invoiceId])
   @@map("invoice_line_items")
+}
+
+// ---------------------------------------------------------------------------
+// Waitlist ("Open Time / ASAP" — Figma flow: Schedule/appointments →
+// Waitlist drag n drop)
+// ---------------------------------------------------------------------------
+
+model WaitlistEntry {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  patientId          String
+  reason             String   // e.g. "Open time / ASAP"
+  requestedProcedure String
+  createdAt          DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("waitlist_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Messaging (Hygienist/Patient portal "Communication tab" — see Figma
+// "Purity Research" flow: Hygienist → Communication tab → Recall alerts;
+// Patient → Messages → "Comm w Hygienist/receptionist")
+// ---------------------------------------------------------------------------
+
+/// One thread per patient, between that patient and the practice's staff.
+/// Deliberately not per-(patient, staff-member) — any staff user in the
+/// organization can read/reply on a patient's single thread, matching the
+/// flow diagram's "Comm w Hygienist/receptionist" (singular thread, multiple
+/// possible staff repliers) rather than modeling per-provider DMs.
+model Conversation {
+  id             String   @id @default(cuid())
+  organizationId String
+  patientId      String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  messages     Message[]
+
+  @@index([organizationId])
+  @@map("conversations")
+}
+
+enum MessageSender {
+  PROVIDER
+  PATIENT
+}
+
+model Message {
+  id             String        @id @default(cuid())
+  conversationId String
+  sender         MessageSender
+  /// Which staff user sent it, when sender = PROVIDER (null for PATIENT
+  /// messages, and null for PROVIDER messages sent before this column
+  /// existed / by a since-removed user).
+  senderUserId   String?
+  body           String
+  sentAt         DateTime      @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, sentAt])
+  @@map("messages")
 }
 
 // ---------------------------------------------------------------------------

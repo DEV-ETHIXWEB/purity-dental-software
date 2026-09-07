@@ -1,8 +1,8 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
-import type { SampleTreatmentPlanItem } from "@/lib/sample-data";
+import type { TreatmentPlanItem } from "@/generated/prisma/client";
 
-const STEP_ORDER: Record<SampleTreatmentPlanItem["status"], number> = {
+const STEP_ORDER: Record<TreatmentPlanItem["status"], number> = {
   COMPLETED: 1,
   ACTIVE: 2,
   PLANNED: 3,
@@ -16,7 +16,7 @@ const STEP_ORDER: Record<SampleTreatmentPlanItem["status"], number> = {
  * item as current, planned items as upcoming. Declined items are excluded
  * from the visual (nothing to show progress toward).
  */
-export function TreatmentProgress({ items }: { items: SampleTreatmentPlanItem[] }) {
+export function TreatmentProgress({ items }: { items: TreatmentPlanItem[] }) {
   const steps = [...items]
     .filter((i) => i.status !== "DECLINED")
     .sort((a, b) => STEP_ORDER[a.status] - STEP_ORDER[b.status]);

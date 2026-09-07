@@ -1,23 +1,25 @@
-import type { Metadata } from "next";
-import { InvoicesTable } from "@/components/dentist/InvoicesTable";
-import { invoices } from "@/lib/sample-data";
+import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/auth/authorize";
+import { listInvoices } from "@/lib/data/billing";
 
-export const metadata: Metadata = {
-  title: "Invoices",
-  description: "Browse, filter, and manage patient invoices.",
-};
+/**
+ * `/billing/invoices` with no id selected — redirects to the most recent
+ * invoice so the detail panel always shows something (matching the Figma
+ * reference, which never shows the list without a selection), falling back
+ * to an empty state only when the org has no invoices at all.
+ */
+export default async function InvoicesIndexPage() {
+  const session = await requireRole(["DENTIST", "ADMIN"]);
+  const invoices = await listInvoices(session.user.organizationId);
 
-export default function InvoicesPage() {
-  const sorted = [...invoices].sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+  if (invoices.length > 0) {
+    redirect(`/billing/invoices/${invoices[0].id}`);
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Invoices</h1>
-        <p className="text-sm text-text-secondary">{invoices.length} invoices on file.</p>
-      </div>
-
-      <InvoicesTable invoices={sorted} />
+    <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-1 text-center">
+      <p className="text-sm font-medium text-text-primary">No invoices yet</p>
+      <p className="text-sm text-text-secondary">Use &ldquo;New Invoice&rdquo; to create one.</p>
     </div>
   );
 }

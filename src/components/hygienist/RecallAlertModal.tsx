@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { BellRing, CheckCircle2 } from "lucide-react";
+import { BellRing } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { CheckmarkIcon } from "@/components/ui/icons/purity-raster-icons";
 
 export interface RecallAlertModalProps {
   open: boolean;
@@ -66,7 +67,7 @@ export function RecallAlertModal({ open, onClose, patientName, onSent }: RecallA
       {sent ? (
         <div className="flex flex-col items-center gap-3 py-4 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success-bg text-success-text">
-            <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
+            <CheckmarkIcon className="h-6 w-6" aria-hidden="true" />
           </div>
           <p className="text-sm font-medium text-text-primary">
             Recall alert sent to {patientName}.

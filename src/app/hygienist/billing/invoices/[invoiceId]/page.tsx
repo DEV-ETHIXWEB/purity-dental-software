@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download, Send } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { InvoiceStatusBadge } from "@/components/dentist/InvoiceStatusBadge";
+import { SendInvoiceReminderButton } from "@/components/dentist/SendInvoiceReminderButton";
 import {
   TableContainer,
   Table,
@@ -14,39 +14,32 @@ import {
   TableHeaderCell,
   TableCell,
 } from "@/components/ui/Table";
-import {
-  getInvoiceById,
-  getPatientById,
-  patientFullName,
-  invoiceTotalCents,
-  formatCentsAsCurrency,
-  invoices,
-} from "@/lib/sample-data";
-
-export function generateStaticParams() {
-  return invoices.map((i) => ({ invoiceId: i.id }));
-}
+import { requireRole } from "@/lib/auth/authorize";
+import { getInvoiceById } from "@/lib/data/billing";
+import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
+import { patientFullName } from "@/lib/patient-format";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/hygienist/billing/invoices/[invoiceId]">): Promise<Metadata> {
+  const session = await requireRole(["HYGIENIST", "ADMIN"]);
   const { invoiceId } = await params;
-  const invoice = getInvoiceById(invoiceId);
+  const invoice = await getInvoiceById(session.user.organizationId, invoiceId);
   return {
-    title: invoice ? invoice.invoiceNumber : "Invoice not found",
-    description: invoice ? `Line items and payment status for ${invoice.invoiceNumber}.` : undefined,
+    title: invoice ? invoiceNumber(invoice) : "Invoice not found",
+    description: invoice ? `Line items and payment status for ${invoiceNumber(invoice)}.` : undefined,
   };
 }
 
 export default async function HygienistInvoiceDetailPage({
   params,
 }: PageProps<"/hygienist/billing/invoices/[invoiceId]">) {
+  const session = await requireRole(["HYGIENIST", "ADMIN"]);
   const { invoiceId } = await params;
-  const invoice = getInvoiceById(invoiceId);
+  const invoice = await getInvoiceById(session.user.organizationId, invoiceId);
   if (!invoice) notFound();
 
-  const patient = getPatientById(invoice.patientId);
-  const total = invoiceTotalCents(invoice);
+  const total = invoice.totalCents;
 
   return (
     <div className="flex flex-col gap-6">
@@ -61,23 +54,18 @@ export default async function HygienistInvoiceDetailPage({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-text-primary">{invoice.invoiceNumber}</h1>
+            <h1 className="text-2xl font-semibold text-text-primary">{invoiceNumber(invoice)}</h1>
             <InvoiceStatusBadge status={invoice.status} />
           </div>
           <p className="text-sm text-text-secondary">
-            Billed to {patient ? patientFullName(patient) : "Unknown patient"}
+            Billed to {patientFullName(invoice.patient)}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Send className="h-4 w-4" aria-hidden="true" />
-            Send Reminder
-          </Button>
-          <Button size="sm">
-            <Download className="h-4 w-4" aria-hidden="true" />
-            Download PDF
-          </Button>
-        </div>
+        {invoice.status !== "PAID" && (
+          <div className="flex gap-2">
+            <SendInvoiceReminderButton invoice={invoice} />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -125,13 +113,13 @@ export default async function HygienistInvoiceDetailPage({
             <div className="flex justify-between">
               <span className="text-text-secondary">Issued</span>
               <span className="text-text-primary">
-                {new Date(invoice.issuedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                {invoice.issuedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-text-secondary">Due</span>
               <span className="text-text-primary">
-                {new Date(invoice.dueAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                {invoice.dueAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </span>
             </div>
             <div className="h-px bg-border" />

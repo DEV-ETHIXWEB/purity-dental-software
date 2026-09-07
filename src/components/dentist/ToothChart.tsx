@@ -1,11 +1,11 @@
 import { Badge } from "@/components/ui/Badge";
-import type { SampleTreatmentPlanItem } from "@/lib/sample-data";
+import type { TreatmentPlanItem } from "@/generated/prisma/client";
 
 // Universal numbering system, upper arch left-to-right then lower arch right-to-left.
 const UPPER_TEETH = Array.from({ length: 16 }, (_, i) => i + 1);
 const LOWER_TEETH = Array.from({ length: 16 }, (_, i) => 32 - i);
 
-function statusForTooth(items: SampleTreatmentPlanItem[], toothNumber: number) {
+function statusForTooth(items: TreatmentPlanItem[], toothNumber: number) {
   return items.find((t) => t.tooth === `#${toothNumber}`) ?? null;
 }
 
@@ -14,7 +14,7 @@ function ToothRow({
   items,
 }: {
   teeth: number[];
-  items: SampleTreatmentPlanItem[];
+  items: TreatmentPlanItem[];
 }) {
   return (
     <div className="flex flex-wrap justify-center gap-1.5">
@@ -27,7 +27,7 @@ function ToothRow({
             title={item ? `#${num}: ${item.procedure} (${item.status})` : `#${num}: no treatment planned`}
             className={`flex h-9 w-9 flex-col items-center justify-center rounded-[var(--radius-sm)] border text-[10px] font-medium ${
               hasPlan
-                ? "border-[var(--color-brand-blue)] bg-info-bg text-[var(--color-brand-blue-text)]"
+                ? "border-[var(--color-brand-blue)] bg-info-bg text-info-text"
                 : "border-border bg-surface-muted text-text-secondary"
             }`}
           >
@@ -40,7 +40,7 @@ function ToothRow({
 }
 
 /** Simple tooth-numbering grid; teeth with an open treatment-plan item are highlighted. */
-export function ToothChart({ items }: { items: SampleTreatmentPlanItem[] }) {
+export function ToothChart({ items }: { items: TreatmentPlanItem[] }) {
   return (
     <div className="flex flex-col items-center gap-4">
       <ToothRow teeth={UPPER_TEETH} items={items} />

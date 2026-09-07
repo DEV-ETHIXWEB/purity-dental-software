@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
 export const metadata: Metadata = {
@@ -25,14 +26,8 @@ export const metadata: Metadata = {
 export default async function ForgotPasswordPage() {
   await connection();
   return (
-    <div className="flex min-h-full w-full flex-1 items-center justify-center bg-surface-muted px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-text-primary">Purity</h1>
-          <p className="text-sm text-text-secondary">Dental clinic practice management</p>
-        </div>
-        <ForgotPasswordForm />
-      </div>
-    </div>
+    <AuthLayout>
+      <ForgotPasswordForm />
+    </AuthLayout>
   );
 }

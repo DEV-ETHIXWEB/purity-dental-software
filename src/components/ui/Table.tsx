@@ -1,10 +1,21 @@
 import { type HTMLAttributes, type TdHTMLAttributes, type ThHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
-/** Wraps the table in a horizontal-scroll container so wide data tables never break mobile layout. */
+/**
+ * Wraps the table in a defined, bordered surface with its own horizontal
+ * scroll — a data table should always read as one contained area, never
+ * float directly on the page background with only row-dividers to imply
+ * its edges.
+ */
 export function TableContainer({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("w-full overflow-x-auto", className)} {...props} />
+    <div
+      className={cn(
+        "w-full overflow-x-auto rounded-[var(--radius-xl)] border border-border bg-surface",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
@@ -15,7 +26,7 @@ export function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>)
 }
 
 export function TableHead({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead className={cn("border-b border-border", className)} {...props} />;
+  return <thead className={cn("border-b border-border bg-surface-muted", className)} {...props} />;
 }
 
 export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
@@ -31,7 +42,7 @@ export function TableHeaderCell({ className, ...props }: ThHTMLAttributes<HTMLTa
     <th
       scope="col"
       className={cn(
-        "px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary",
+        "px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary",
         className,
       )}
       {...props}
@@ -40,5 +51,5 @@ export function TableHeaderCell({ className, ...props }: ThHTMLAttributes<HTMLTa
 }
 
 export function TableCell({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("px-4 py-3 align-middle text-text-primary", className)} {...props} />;
+  return <td className={cn("px-4 py-2.5 align-middle text-text-primary", className)} {...props} />;
 }

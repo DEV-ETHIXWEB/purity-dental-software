@@ -13,7 +13,7 @@ test.describe("/login page", () => {
     await page.goto("/login");
     await expect(page.getByRole("heading", { name: "Sign in to Purity" })).toBeVisible();
     await expect(page.getByLabel("Email")).toBeVisible();
-    await expect(page.getByLabel("Password")).toBeVisible();
+    await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   });
 
@@ -56,7 +56,13 @@ test.describe("/login page", () => {
     await expect(page.getByLabel("Email")).toBeFocused();
 
     await page.keyboard.press("Tab");
-    await expect(page.getByLabel("Password")).toBeFocused();
+    await expect(page.getByLabel("Password", { exact: true })).toBeFocused();
+
+    // Next stop is the password field's own show/hide toggle, not the
+    // submit button — it's part of the same control and must be reachable
+    // right after it.
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "Show password" })).toBeFocused();
 
     await page.keyboard.press("Tab");
     await expect(page.getByRole("button", { name: "Sign in" })).toBeFocused();
@@ -65,7 +71,7 @@ test.describe("/login page", () => {
   test("labels are correctly associated with their inputs via htmlFor/id", async ({ page }) => {
     await page.goto("/login");
     const emailInput = page.getByLabel("Email");
-    const passwordInput = page.getByLabel("Password");
+    const passwordInput = page.getByLabel("Password", { exact: true });
     // getByLabel only resolves if label[for] -> input[id] association is
     // correct, so successfully locating both is itself the assertion; this
     // also double-checks each resolves to exactly one <input>.

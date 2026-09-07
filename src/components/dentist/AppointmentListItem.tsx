@@ -1,12 +1,9 @@
 import Link from "next/link";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
-import {
-  type SampleAppointment,
-  type AppointmentStatus,
-  getPatientById,
-  patientFullName,
-} from "@/lib/sample-data";
+import { patientFullName } from "@/lib/patient-format";
+import type { AppointmentWithPatient } from "@/lib/data/appointments";
+import type { AppointmentStatus } from "@/generated/prisma/client";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   SCHEDULED: "Scheduled",
@@ -29,22 +26,22 @@ const STATUS_TONE: Record<AppointmentStatus, BadgeTone> = {
 };
 
 export interface AppointmentListItemProps {
-  appointment: SampleAppointment;
+  appointment: AppointmentWithPatient;
   /** Portal route prefix for the patient profile link (e.g. "/hygienist"). Defaults to the Dentist portal's root. */
   basePath?: string;
 }
 
 export function AppointmentListItem({ appointment, basePath = "" }: AppointmentListItemProps) {
-  const patient = getPatientById(appointment.patientId);
-  const time = new Date(appointment.startTime).toLocaleTimeString("en-US", {
+  const patient = appointment.patient;
+  const time = appointment.startTime.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
   });
 
   return (
-    <li className="flex items-center gap-3 py-3">
+    <li className="flex items-center gap-3 py-2.5">
       <div className="w-16 shrink-0 text-sm font-medium text-text-secondary">{time}</div>
-      {patient && <Avatar name={patientFullName(patient)} src={patient.photoUrl} size="sm" />}
+      {patient && <Avatar name={patientFullName(patient)} src={patient.photoUrl ?? undefined} size="sm" />}
       <div className="min-w-0 flex-1">
         {patient ? (
           <Link

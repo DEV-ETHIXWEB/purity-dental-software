@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { Avatar } from "@/components/ui/Avatar";
-import { currentPatient, patientFullName } from "@/lib/sample-data";
+import { notFound } from "next/navigation";
+import { ProfileSettingsCard } from "@/components/shell/ProfileSettingsCard";
+import { requireRole } from "@/lib/auth/authorize";
+import { getPatientForUser } from "@/lib/data/patients";
+import { patientFullName } from "@/lib/patient-format";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -16,9 +17,13 @@ const notificationOptions = [
   { id: "notif-billing", label: "Billing and payment updates" },
 ];
 
-export default function PatientSettingsPage() {
+export default async function PatientSettingsPage() {
+  const session = await requireRole(["PATIENT"]);
+  const currentPatient = await getPatientForUser(session.user.id);
+  if (!currentPatient) notFound();
+
   const name = patientFullName(currentPatient);
-  const dob = new Date(currentPatient.dateOfBirth).toLocaleDateString("en-US", {
+  const dob = currentPatient.dateOfBirth.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
@@ -31,26 +36,14 @@ export default function PatientSettingsPage() {
         <p className="text-sm text-text-secondary">Manage your profile and how we reach you.</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Your profile</CardTitle>
-          <CardDescription>This is what your care team sees for you.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <div className="flex items-center gap-4">
-            <Avatar name={name} src={currentPatient.photoUrl} size="lg" />
-            <Button variant="outline" size="sm" className="min-h-11">
-              Change photo
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input label="Full name" defaultValue={name} />
-            <Input label="Date of birth" defaultValue={dob} disabled />
-            <Input label="Email" type="email" defaultValue={currentPatient.email} />
-            <Input label="Phone" type="tel" defaultValue={currentPatient.phone} />
-          </div>
-        </CardContent>
-      </Card>
+      <ProfileSettingsCard
+        name={name}
+        email={currentPatient.email ?? ""}
+        phone={currentPatient.phone ?? ""}
+        roleLabel="Patient"
+        photoUrl={currentPatient.photoUrl}
+        extraReadOnlyField={{ label: "Date of birth", value: dob }}
+      />
 
       <Card>
         <CardHeader>
@@ -69,16 +62,12 @@ export default function PatientSettingsPage() {
                 id={item.id}
                 type="checkbox"
                 defaultChecked
-                className="h-5 w-5 rounded border-border-strong text-[var(--color-brand-blue)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+                className="h-5 w-5 rounded border-border-strong accent-[var(--color-brand-blue)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
               />
             </label>
           ))}
         </CardContent>
       </Card>
-
-      <div>
-        <Button className="min-h-11">Save changes</Button>
-      </div>
     </div>
   );
 }

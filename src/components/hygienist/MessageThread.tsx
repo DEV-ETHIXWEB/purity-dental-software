@@ -1,20 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, MessagesSquare, BellRing } from "lucide-react";
+import { Send, BellRing } from "lucide-react";
+import { ChatIconFilled } from "@/components/ui/icons/purity-icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { VisuallyHiddenLabel } from "@/components/ui/Input";
-import {
-  type SampleMessage,
-  type SamplePatient,
-  patientFullName,
-  currentHygienist,
-} from "@/lib/sample-data";
+import { patientFullName } from "@/lib/patient-format";
+import type { Patient, Message } from "@/generated/prisma/client";
 import { cn } from "@/lib/cn";
 
-function formatMessageTime(iso: string) {
-  return new Date(iso).toLocaleString("en-US", {
+function formatMessageTime(date: Date) {
+  return date.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -23,46 +20,43 @@ function formatMessageTime(iso: string) {
 }
 
 export interface MessageThreadProps {
-  patient: SamplePatient;
-  messages: SampleMessage[];
-  onSend: (body: string) => void;
+  patient: Patient;
+  messages: Message[];
+  /** Name shown as the sender label on PROVIDER-side bubbles (the signed-in staff member). */
+  currentUserName: string;
+  onSend: (body: string) => void | Promise<void>;
   onSendRecallAlert: () => void;
 }
 
-/**
- * Message bubble thread + composer for a single conversation. Sending a
- * message updates the caller's local state optimistically (via `onSend`) —
- * there is no backend, so nothing here persists across a page reload.
- */
-export function MessageThread({ patient, messages, onSend, onSendRecallAlert }: MessageThreadProps) {
+/** Message bubble thread + composer for a single conversation. Sending persists via `onSend`. */
+export function MessageThread({ patient, messages, currentUserName, onSend, onSendRecallAlert }: MessageThreadProps) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const listEndRef = useRef<HTMLDivElement>(null);
   const name = patientFullName(patient);
-  const isOverdue = patient.recallStatus.toLowerCase().includes("overdue");
+  const isOverdue = (patient.recallStatus ?? "").toLowerCase().includes("overdue");
 
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length]);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = draft.trim();
-    if (!trimmed) return;
+    if (!trimmed || sending) return;
 
     setSending(true);
-    // Simulated send latency so the UI shows a real (if brief) loading state
-    // rather than an instant, decorative update.
-    window.setTimeout(() => {
-      onSend(trimmed);
+    try {
+      await onSend(trimmed);
       setDraft("");
+    } finally {
       setSending(false);
-    }, 300);
+    }
   }
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between gap-3 border-b border-border p-4">
+      <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border p-4">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar name={name} src={patient.photoUrl} size="sm" />
           <div className="min-w-0">
@@ -81,7 +75,7 @@ export function MessageThread({ patient, messages, onSend, onSendRecallAlert }: 
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-            <MessagesSquare className="h-8 w-8 text-text-secondary" aria-hidden="true" />
+            <ChatIconFilled className="h-8 w-8" aria-hidden="true" />
             <p className="text-sm font-medium text-text-primary">No messages yet</p>
             <p className="max-w-[220px] text-xs text-text-secondary">
               Start the conversation with {name} below.
@@ -97,7 +91,7 @@ export function MessageThread({ patient, messages, onSend, onSendRecallAlert }: 
                   className={cn("flex flex-col", isProvider ? "items-end" : "items-start")}
                 >
                   <span className="mb-1 text-xs text-text-secondary">
-                    {isProvider ? currentHygienist.name : name} ·{" "}
+                    {isProvider ? currentUserName : name} ·{" "}
                     {formatMessageTime(message.sentAt)}
                   </span>
                   <div
@@ -113,9 +107,9 @@ export function MessageThread({ patient, messages, onSend, onSendRecallAlert }: 
                 </li>
               );
             })}
-            <div ref={listEndRef} />
           </ul>
         )}
+        <div ref={listEndRef} />
       </div>
 
       <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-border p-4">

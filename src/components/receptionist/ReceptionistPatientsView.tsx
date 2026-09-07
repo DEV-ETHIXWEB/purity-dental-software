@@ -1,13 +1,15 @@
-"use client";
-
 import Link from "next/link";
 import { UserPlus } from "lucide-react";
 import { PatientsTable } from "@/components/dentist/PatientsTable";
-import { useAllPatients } from "@/lib/receptionist-patients-store";
+import type { Patient } from "@/generated/prisma/client";
 
-export function ReceptionistPatientsView() {
-  const patients = useAllPatients();
-
+export function ReceptionistPatientsView({
+  patients,
+  initialQuery,
+}: {
+  patients: Patient[];
+  initialQuery?: string;
+}) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -26,7 +28,7 @@ export function ReceptionistPatientsView() {
         </Link>
       </div>
 
-      <PatientsTable patients={patients} basePath="/receptionist" />
+      <PatientsTable patients={patients} basePath="/receptionist" initialQuery={initialQuery} />
     </div>
   );
 }

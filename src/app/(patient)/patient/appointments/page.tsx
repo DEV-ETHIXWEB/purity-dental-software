@@ -1,14 +1,26 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { PatientAppointmentsView } from "./PatientAppointmentsView";
-import { appointments, currentPatient } from "@/lib/sample-data";
+import { requireRole } from "@/lib/auth/authorize";
+import { getPatientForUser } from "@/lib/data/patients";
+import { appointmentsForPatient } from "@/lib/data/appointments";
+import { listProviders } from "@/lib/data/providers";
 
 export const metadata: Metadata = {
   title: "Appointments",
   description: "Book a new visit, see what's coming up, and review your visit history.",
 };
 
-export default function PatientAppointmentsPage() {
-  const myAppointments = appointments.filter((a) => a.patientId === currentPatient.id);
+export default async function PatientAppointmentsPage() {
+  const session = await requireRole(["PATIENT"]);
+  const patient = await getPatientForUser(session.user.id);
+  if (!patient) notFound();
+
+  const [myAppointments, providers] = await Promise.all([
+    appointmentsForPatient(session.user.organizationId, patient.id),
+    listProviders(session.user.organizationId),
+  ]);
+  const provider = providers[0] ?? null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -19,7 +31,11 @@ export default function PatientAppointmentsPage() {
         </p>
       </div>
 
-      <PatientAppointmentsView initialAppointments={myAppointments} />
+      <PatientAppointmentsView
+        initialAppointments={myAppointments}
+        providerId={provider?.id ?? ""}
+        providerName={provider?.name ?? "your provider"}
+      />
     </div>
   );
 }

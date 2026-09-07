@@ -15,20 +15,19 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import { Input } from "@/components/ui/Input";
 import { PatientStatusBadge } from "@/components/dentist/PatientStatusBadge";
-import {
-  type SamplePatient,
-  patientFullName,
-  patientAge,
-} from "@/lib/sample-data";
+import { patientFullName, patientAge } from "@/lib/patient-format";
+import type { Patient } from "@/generated/prisma/client";
 
 export interface PatientsTableProps {
-  patients: SamplePatient[];
+  patients: Patient[];
   /** Portal route prefix for patient profile links (e.g. "/hygienist"). Defaults to the Dentist portal's root. */
   basePath?: string;
+  /** Seeds the search box from the top bar's `?q=` — see `TopBar.tsx`'s search form. */
+  initialQuery?: string;
 }
 
-export function PatientsTable({ patients, basePath = "" }: PatientsTableProps) {
-  const [query, setQuery] = useState("");
+export function PatientsTable({ patients, basePath = "", initialQuery = "" }: PatientsTableProps) {
+  const [query, setQuery] = useState(initialQuery);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

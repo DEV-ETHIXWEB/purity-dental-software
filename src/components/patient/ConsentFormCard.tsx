@@ -1,18 +1,27 @@
 "use client";
 
 import { useId, useState } from "react";
-import { CheckCircle2, FileText, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import type { SampleConsentForm } from "@/lib/sample-data";
+import { DocumentIconFilled } from "@/components/ui/icons/purity-icons";
+import { CheckmarkIcon } from "@/components/ui/icons/purity-raster-icons";
+
+export interface ConsentForm {
+  id: string;
+  title: string;
+  description: string;
+}
 
 /**
  * Real-feeling e-sign interaction for one consent form: must check "I have
  * reviewed and agree" before Sign enables, then shows a signed/completed
- * state with a timestamp. Client-side state only — no real document
- * rendering or e-signature provider behind this.
+ * state with a timestamp. Client-side state only — there's no document
+ * storage or e-signature provider integrated yet, so consent forms
+ * themselves are static content (see `patient/care/page.tsx`) rather than a
+ * DB-backed model; that's a real follow-up, not an oversight here.
  */
-export function ConsentFormCard({ form }: { form: SampleConsentForm }) {
+export function ConsentFormCard({ form }: { form: ConsentForm }) {
   const [agreed, setAgreed] = useState(false);
   const [signing, setSigning] = useState(false);
   const [signedAt, setSignedAt] = useState<string | null>(null);
@@ -32,7 +41,7 @@ export function ConsentFormCard({ form }: { form: SampleConsentForm }) {
     <Card className="flex flex-col gap-4 p-5">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-[var(--color-brand-blue-text)]">
-          <FileText className="h-5 w-5" aria-hidden="true" />
+          <DocumentIconFilled className="h-5 w-5" aria-hidden="true" />
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-text-primary">{form.title}</p>
@@ -42,7 +51,7 @@ export function ConsentFormCard({ form }: { form: SampleConsentForm }) {
 
       {isSigned ? (
         <div className="flex items-center gap-2 rounded-[var(--radius-lg)] bg-success-bg px-4 py-3 text-sm text-success-text">
-          <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <CheckmarkIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             Signed on{" "}
             {new Date(signedAt).toLocaleString("en-US", {
@@ -61,7 +70,7 @@ export function ConsentFormCard({ form }: { form: SampleConsentForm }) {
               type="checkbox"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 h-5 w-5 shrink-0 rounded border-border-strong text-[var(--color-brand-blue)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+              className="mt-0.5 h-5 w-5 shrink-0 rounded border-border-strong accent-[var(--color-brand-blue)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
             />
             <span className="text-text-primary">I have reviewed and agree to this document.</span>
           </label>

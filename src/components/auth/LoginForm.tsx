@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/Button";
 import { login } from "@/lib/actions/login";
 
@@ -70,9 +71,9 @@ export function LoginForm() {
   const isSubmitting = status === "submitting";
 
   return (
-    <Card>
-      <CardHeader className="flex-col items-start gap-1">
-        <CardTitle>Sign in to Purity</CardTitle>
+    <Card className="p-2">
+      <CardHeader className="flex-col items-start gap-1 pt-4">
+        <CardTitle className="text-xl">Sign in to Purity</CardTitle>
         <CardDescription>Enter your email and password to access your portal.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -103,10 +104,9 @@ export function LoginForm() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Input
+              <PasswordInput
                 id={`${formId}-password`}
                 label="Password"
-                type="password"
                 autoComplete="current-password"
                 required
                 value={password}

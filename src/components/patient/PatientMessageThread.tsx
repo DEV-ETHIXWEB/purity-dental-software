@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { MessagesSquare, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { VisuallyHiddenLabel } from "@/components/ui/Input";
 import { EmptyState } from "@/components/patient/EmptyState";
-import { type SampleMessage, currentPatient, currentProvider } from "@/lib/sample-data";
+import { ChatIconFilled } from "@/components/ui/icons/purity-icons";
+import type { Message } from "@/generated/prisma/client";
 import { cn } from "@/lib/cn";
 
-function formatMessageTime(iso: string) {
-  return new Date(iso).toLocaleString("en-US", {
+function formatMessageTime(date: Date) {
+  return date.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -19,17 +20,18 @@ function formatMessageTime(iso: string) {
 }
 
 interface PatientMessageThreadProps {
-  messages: SampleMessage[];
-  onSend: (body: string) => void;
+  messages: Message[];
+  patientFirstName: string;
+  onSend: (body: string) => void | Promise<void>;
 }
 
 /**
- * Patient-side message thread with Sarah's care team. Mirrors the Hygienist
+ * Patient-side message thread with their care team. Mirrors the Hygienist
  * portal's thread UI but from the opposite perspective: PATIENT-sent bubbles
- * align right, PROVIDER-sent bubbles align left. Sending updates local state
- * optimistically via `onSend` — there's no backend yet.
+ * align right, PROVIDER-sent bubbles align left. Sending persists via the
+ * real `sendPatientMessage` Server Action (called by the parent view).
  */
-export function PatientMessageThread({ messages, onSend }: PatientMessageThreadProps) {
+export function PatientMessageThread({ messages, patientFirstName, onSend }: PatientMessageThreadProps) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const listEndRef = useRef<HTMLDivElement>(null);
@@ -38,26 +40,27 @@ export function PatientMessageThread({ messages, onSend }: PatientMessageThreadP
     listEndRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length]);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmed = draft.trim();
-    if (!trimmed) return;
+    if (!trimmed || sending) return;
 
     setSending(true);
-    window.setTimeout(() => {
-      onSend(trimmed);
+    try {
+      await onSend(trimmed);
       setDraft("");
+    } finally {
       setSending(false);
-    }, 300);
+    }
   }
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-border p-4">
-        <Avatar name={currentProvider.name} size="sm" />
+        <Avatar name="Care team" size="sm" />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-text-primary">Your care team</p>
-          <p className="truncate text-xs text-text-secondary">{currentProvider.name} and staff</p>
+          <p className="truncate text-xs text-text-secondary">Dentists, hygienists, and front desk staff</p>
         </div>
       </div>
 
@@ -65,7 +68,7 @@ export function PatientMessageThread({ messages, onSend }: PatientMessageThreadP
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <EmptyState
-              icon={MessagesSquare}
+              icon={ChatIconFilled}
               title="No messages yet"
               description="Send a message below and your care team will get back to you soon."
             />
@@ -77,7 +80,7 @@ export function PatientMessageThread({ messages, onSend }: PatientMessageThreadP
               return (
                 <li key={message.id} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
                   <span className="mb-1 text-xs text-text-secondary">
-                    {isMe ? currentPatient.firstName : currentProvider.name} · {formatMessageTime(message.sentAt)}
+                    {isMe ? patientFirstName : "Care team"} · {formatMessageTime(message.sentAt)}
                   </span>
                   <div
                     className={cn(
@@ -90,9 +93,9 @@ export function PatientMessageThread({ messages, onSend }: PatientMessageThreadP
                 </li>
               );
             })}
-            <div ref={listEndRef} />
           </ul>
         )}
+        <div ref={listEndRef} />
       </div>
 
       <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-border p-4">

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download, Send } from "lucide-react";
+import { Download } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
 import { InvoiceStatusBadge } from "@/components/dentist/InvoiceStatusBadge";
+import { SendInvoiceReminderButton } from "@/components/dentist/SendInvoiceReminderButton";
+import { MarkInvoicePaidButton } from "@/components/dentist/MarkInvoicePaidButton";
 import {
   TableContainer,
   Table,
@@ -14,69 +15,62 @@ import {
   TableHeaderCell,
   TableCell,
 } from "@/components/ui/Table";
-import {
-  getInvoiceById,
-  getPatientById,
-  patientFullName,
-  invoiceTotalCents,
-  formatCentsAsCurrency,
-  invoices,
-} from "@/lib/sample-data";
-
-export function generateStaticParams() {
-  return invoices.map((i) => ({ invoiceId: i.id }));
-}
+import { requireRole } from "@/lib/auth/authorize";
+import { getInvoiceById } from "@/lib/data/billing";
+import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
+import { patientFullName, patientAge } from "@/lib/patient-format";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/billing/invoices/[invoiceId]">): Promise<Metadata> {
+  const session = await requireRole(["DENTIST", "ADMIN"]);
   const { invoiceId } = await params;
-  const invoice = getInvoiceById(invoiceId);
+  const invoice = await getInvoiceById(session.user.organizationId, invoiceId);
   return {
-    title: invoice ? invoice.invoiceNumber : "Invoice not found",
-    description: invoice ? `Line items and payment status for ${invoice.invoiceNumber}.` : undefined,
+    title: invoice ? invoiceNumber(invoice) : "Invoice not found",
+    description: invoice ? `Line items and payment status for ${invoiceNumber(invoice)}.` : undefined,
   };
 }
 
 export default async function InvoiceDetailPage({
   params,
 }: PageProps<"/billing/invoices/[invoiceId]">) {
+  const session = await requireRole(["DENTIST", "ADMIN"]);
   const { invoiceId } = await params;
-  const invoice = getInvoiceById(invoiceId);
+  const invoice = await getInvoiceById(session.user.organizationId, invoiceId);
   if (!invoice) notFound();
 
-  const patient = getPatientById(invoice.patientId);
-  const total = invoiceTotalCents(invoice);
+  const subtotalCents = invoice.lineItems.reduce((sum, li) => sum + li.quantity * li.unitPriceCents, 0);
+  const sexLabel = invoice.patient.sex === "MALE" ? "Male" : invoice.patient.sex === "FEMALE" ? "Female" : "Other";
 
   return (
     <div className="flex flex-col gap-6">
-      <Link
-        href="/billing/invoices"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)] w-fit"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Back to invoices
-      </Link>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-text-primary">{invoice.invoiceNumber}</h1>
-            <InvoiceStatusBadge status={invoice.status} />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Avatar name={patientFullName(invoice.patient)} src={invoice.patient.photoUrl} size="lg" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold text-text-primary">{invoiceNumber(invoice)}</h1>
+              <InvoiceStatusBadge status={invoice.status} />
+            </div>
+            <p className="text-sm text-text-secondary">
+              {patientFullName(invoice.patient)} · Age {patientAge(invoice.patient)} · {sexLabel}
+            </p>
+            {invoice.provider && (
+              <p className="text-sm text-text-secondary">Treating Dentist: {invoice.provider.name}</p>
+            )}
           </div>
-          <p className="text-sm text-text-secondary">
-            Billed to {patient ? patientFullName(patient) : "Unknown patient"}
-          </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Send className="h-4 w-4" aria-hidden="true" />
-            Send Reminder
-          </Button>
-          <Button size="sm">
+        <div className="flex flex-wrap gap-2">
+          {invoice.status !== "PAID" && <MarkInvoicePaidButton invoiceId={invoice.id} />}
+          {invoice.status !== "PAID" && <SendInvoiceReminderButton invoice={invoice} />}
+          <a
+            href={`/billing/invoices/${invoice.id}/pdf`}
+            className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius-lg)] border border-border bg-transparent px-3 text-sm font-medium text-text-primary transition-colors hover:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+          >
             <Download className="h-4 w-4" aria-hidden="true" />
             Download PDF
-          </Button>
+          </a>
         </div>
       </div>
 
@@ -91,7 +85,7 @@ export default async function InvoiceDetailPage({
                 <TableHead>
                   <TableRow>
                     <TableHeaderCell>Description</TableHeaderCell>
-                    <TableHeaderCell>Code</TableHeaderCell>
+                    <TableHeaderCell>Tooth / Quadrant</TableHeaderCell>
                     <TableHeaderCell>Qty</TableHeaderCell>
                     <TableHeaderCell>Unit Price</TableHeaderCell>
                     <TableHeaderCell>Amount</TableHeaderCell>
@@ -101,7 +95,9 @@ export default async function InvoiceDetailPage({
                   {invoice.lineItems.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="text-text-primary">{item.description}</TableCell>
-                      <TableCell className="text-text-secondary">{item.procedureCode}</TableCell>
+                      <TableCell className="text-text-secondary">
+                        {[item.tooth, item.quadrant].filter(Boolean).join(" · ") || "—"}
+                      </TableCell>
                       <TableCell className="text-text-secondary">{item.quantity}</TableCell>
                       <TableCell className="text-text-secondary">
                         {formatCentsAsCurrency(item.unitPriceCents)}
@@ -125,19 +121,34 @@ export default async function InvoiceDetailPage({
             <div className="flex justify-between">
               <span className="text-text-secondary">Issued</span>
               <span className="text-text-primary">
-                {new Date(invoice.issuedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                {invoice.issuedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-text-secondary">Due</span>
               <span className="text-text-primary">
-                {new Date(invoice.dueAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                {invoice.dueAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </span>
             </div>
             <div className="h-px bg-border" />
+            <div className="flex justify-between">
+              <span className="text-text-secondary">Subtotal</span>
+              <span className="text-text-primary">{formatCentsAsCurrency(subtotalCents)}</span>
+            </div>
+            {invoice.insuranceAdjustmentCents > 0 && (
+              <div className="flex justify-between">
+                <span className="text-text-secondary">Insurance Adjustment</span>
+                <span className="text-error-text">-{formatCentsAsCurrency(invoice.insuranceAdjustmentCents)}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-text-secondary">Tax</span>
+              <span className="text-text-primary">{formatCentsAsCurrency(invoice.taxCents)}</span>
+            </div>
+            <div className="h-px bg-border" />
             <div className="flex justify-between text-base font-semibold">
-              <span className="text-text-primary">Total</span>
-              <span className="text-text-primary">{formatCentsAsCurrency(total)}</span>
+              <span className="text-text-primary">Total Due</span>
+              <span className="text-text-primary">{formatCentsAsCurrency(invoice.totalCents)}</span>
             </div>
           </CardContent>
         </Card>

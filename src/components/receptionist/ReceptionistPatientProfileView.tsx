@@ -1,10 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { CalendarX2, FileX2, UserX } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Pencil, Check, X } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/Card";
+import { CalendarIconFilled, BillingIconFilled } from "@/components/ui/icons/purity-icons";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { ContactDetailsCard } from "@/components/dentist/ContactDetailsCard";
 import { BillingDetailsCard } from "@/components/dentist/BillingDetailsCard";
@@ -19,16 +23,12 @@ import {
   TableHeaderCell,
   TableCell,
 } from "@/components/ui/Table";
-import {
-  patientFullName,
-  patientAge,
-  appointments,
-  invoices,
-  invoiceTotalCents,
-  formatCentsAsCurrency,
-  type AppointmentStatus,
-} from "@/lib/sample-data";
-import { useFindPatientById } from "@/lib/receptionist-patients-store";
+import { patientFullName, patientAge } from "@/lib/patient-format";
+import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
+import { updatePatientDemographics } from "@/lib/actions/update-patient";
+import type { InvoiceWithDetails } from "@/lib/data/billing";
+import type { AppointmentWithPatientAndProvider } from "@/lib/data/appointments";
+import type { Patient, AppointmentStatus } from "@/generated/prisma/client";
 import { type BadgeTone } from "@/components/ui/Badge";
 
 const STATUS_TONE: Record<AppointmentStatus, BadgeTone> = {
@@ -41,86 +41,134 @@ const STATUS_TONE: Record<AppointmentStatus, BadgeTone> = {
   NO_SHOW: "error",
 };
 
-export function ReceptionistPatientProfileView({ patientId }: { patientId: string }) {
-  const patient = useFindPatientById(patientId);
+export interface ReceptionistPatientProfileViewProps {
+  patient: Patient;
+  appointments: AppointmentWithPatientAndProvider[];
+  invoices: InvoiceWithDetails[];
+}
 
-  if (!patient) {
-    // Session-registered patients only exist in this browser tab's memory
-    // (see `receptionist-patients-store.ts`) — a hard refresh or a different
-    // tab won't find them since there's no backend yet. Render an in-page
-    // empty state rather than a hard 404 so the "why" is clear.
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 rounded-[var(--radius-xl)] border border-dashed border-border-strong bg-surface py-16 text-center">
-        <UserX className="h-8 w-8 text-text-secondary" aria-hidden="true" />
-        <div>
-          <p className="text-sm font-medium text-text-primary">Patient not found</p>
-          <p className="mx-auto max-w-sm text-xs text-text-secondary">
-            This patient record isn&apos;t available. If they were just registered, this can happen
-            after a page refresh since registration isn&apos;t saved to a database yet.
-          </p>
-        </div>
-        <Link
-          href="/receptionist/patients"
-          className="mt-2 inline-flex h-10 items-center rounded-[var(--radius-lg)] border border-border bg-transparent px-4 text-sm font-medium text-text-primary transition-colors hover:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
-        >
-          Back to Patients
-        </Link>
-      </div>
-    );
+export function ReceptionistPatientProfileView({
+  patient,
+  appointments,
+  invoices,
+}: ReceptionistPatientProfileViewProps) {
+  const router = useRouter();
+  const name = patientFullName(patient);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState(patient.firstName);
+  const [lastName, setLastName] = useState(patient.lastName);
+  const [phone, setPhone] = useState(patient.phone ?? "");
+
+  function cancelEdit() {
+    setFirstName(patient.firstName);
+    setLastName(patient.lastName);
+    setPhone(patient.phone ?? "");
+    setError(null);
+    setEditing(false);
   }
 
-  const name = patientFullName(patient);
-  const patientAppointments = appointments
-    .filter((a) => a.patientId === patient.id)
-    .sort((a, b) => b.startTime.localeCompare(a.startTime));
-  const patientInvoices = invoices
-    .filter((i) => i.patientId === patient.id)
-    .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    const result = await updatePatientDemographics(patient.id, { firstName, lastName, phone });
+    setSaving(false);
+    if (result.ok) {
+      setEditing(false);
+      router.refresh();
+    } else {
+      setError(result.error ?? "Couldn't save demographics. Please try again.");
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 rounded-[var(--radius-xl)] border border-border bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 rounded-[var(--radius-xl)] border border-border bg-surface p-5 shadow-card sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-1 items-start gap-4">
           <Avatar name={name} src={patient.photoUrl} size="lg" />
-          <div>
-            <h1 className="text-xl font-semibold text-text-primary">{name}</h1>
-            <p className="text-sm text-text-secondary">
-              {new Date(patient.dateOfBirth).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}{" "}
-              ({patientAge(patient)} yrs) ·{" "}
-              {patient.sex === "MALE" ? "Male" : patient.sex === "FEMALE" ? "Female" : "Other"}
-            </p>
+          <div className="flex-1">
+            {editing ? (
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Input label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                  <Input label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                  <Input label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                </div>
+                {error && (
+                  <p role="alert" className="text-sm text-error">
+                    {error}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <>
+                <h1 className="text-xl font-semibold text-text-primary">{name}</h1>
+                <p className="text-sm text-text-secondary">
+                  {patient.dateOfBirth.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}{" "}
+                  ({patientAge(patient)} yrs) ·{" "}
+                  {patient.sex === "MALE" ? "Male" : patient.sex === "FEMALE" ? "Female" : "Other"}
+                </p>
+              </>
+            )}
             <div className="mt-2">
               <RecallStatusBadge status={patient.recallStatus} />
             </div>
           </div>
         </div>
+        {!editing ? (
+          <Button variant="ghost" size="sm" onClick={() => setEditing(true)} aria-label="Edit demographics">
+            <Pencil className="h-4 w-4" aria-hidden="true" />
+            Edit
+          </Button>
+        ) : (
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSave}
+              disabled={saving}
+              aria-label="Save demographics"
+            >
+              <Check className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={cancelEdit}
+              disabled={saving}
+              aria-label="Cancel editing demographics"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="flex flex-col gap-6 lg:col-span-1">
-          <ContactDetailsCard patient={patient} />
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Medical Alerts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {patient.medicalAlerts.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {patient.medicalAlerts.map((alert) => (
-                    <Badge key={alert} tone="error">
-                      {alert}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-text-secondary">No known alerts on file.</p>
-              )}
-            </CardContent>
+        <div className="lg:col-span-1">
+          <Card className="divide-y divide-border">
+            <ContactDetailsCard patient={patient} canEdit />
+            <section className="p-4">
+              <h3 className="text-[15px] font-semibold tracking-tight text-text-primary">Medical Alerts</h3>
+              <div className="mt-3">
+                {patient.medicalAlerts.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {patient.medicalAlerts.map((alert) => (
+                      <Badge key={alert} tone="error">
+                        {alert}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-text-secondary">No known alerts on file.</p>
+                )}
+              </div>
+            </section>
           </Card>
         </div>
 
@@ -135,13 +183,13 @@ export function ReceptionistPatientProfileView({ patientId }: { patientId: strin
                 </TabsList>
 
                 <TabsContent value="overview">
-                  <BillingDetailsCard patient={patient} />
+                  <BillingDetailsCard patient={patient} canEdit />
                 </TabsContent>
 
                 <TabsContent value="appointments">
-                  {patientAppointments.length === 0 ? (
+                  {appointments.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-border-strong py-12 text-center">
-                      <CalendarX2 className="h-8 w-8 text-text-secondary" aria-hidden="true" />
+                      <CalendarIconFilled className="h-8 w-8" aria-hidden="true" />
                       <p className="text-sm font-medium text-text-primary">No appointment history</p>
                       <p className="max-w-xs text-xs text-text-secondary">
                         {name}&apos;s visits will appear here once appointments are booked.
@@ -159,16 +207,16 @@ export function ReceptionistPatientProfileView({ patientId }: { patientId: strin
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {patientAppointments.map((appt) => (
+                          {appointments.map((appt) => (
                             <TableRow key={appt.id}>
                               <TableCell className="text-text-secondary">
-                                {new Date(appt.startTime).toLocaleDateString("en-US", {
+                                {appt.startTime.toLocaleDateString("en-US", {
                                   month: "short",
                                   day: "numeric",
                                   year: "numeric",
                                 })}
                               </TableCell>
-                              <TableCell className="text-text-primary">{appt.providerName}</TableCell>
+                              <TableCell className="text-text-primary">{appt.provider.name}</TableCell>
                               <TableCell className="text-text-primary">{appt.procedureType}</TableCell>
                               <TableCell>
                                 <Badge tone={STATUS_TONE[appt.status]}>
@@ -184,9 +232,9 @@ export function ReceptionistPatientProfileView({ patientId }: { patientId: strin
                 </TabsContent>
 
                 <TabsContent value="billing">
-                  {patientInvoices.length === 0 ? (
+                  {invoices.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-border-strong py-12 text-center">
-                      <FileX2 className="h-8 w-8 text-text-secondary" aria-hidden="true" />
+                      <BillingIconFilled className="h-8 w-8" aria-hidden="true" />
                       <p className="text-sm font-medium text-text-primary">No invoices on file</p>
                       <p className="max-w-xs text-xs text-text-secondary">
                         Invoices for {name} will appear here once they&apos;re billed.
@@ -204,20 +252,20 @@ export function ReceptionistPatientProfileView({ patientId }: { patientId: strin
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {patientInvoices.map((invoice) => (
+                          {invoices.map((invoice) => (
                             <TableRow key={invoice.id}>
                               <TableCell className="font-medium text-text-primary">
-                                {invoice.invoiceNumber}
+                                {invoiceNumber(invoice)}
                               </TableCell>
                               <TableCell className="text-text-secondary">
-                                {new Date(invoice.issuedAt).toLocaleDateString("en-US", {
+                                {invoice.issuedAt.toLocaleDateString("en-US", {
                                   month: "short",
                                   day: "numeric",
                                   year: "numeric",
                                 })}
                               </TableCell>
                               <TableCell className="font-medium text-text-primary">
-                                {formatCentsAsCurrency(invoiceTotalCents(invoice))}
+                                {formatCentsAsCurrency(invoice.totalCents)}
                               </TableCell>
                               <TableCell>
                                 <InvoiceStatusBadge status={invoice.status} />

@@ -6,10 +6,11 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { RecallAlertModal } from "@/components/hygienist/RecallAlertModal";
-import { type SamplePatient, patientFullName } from "@/lib/sample-data";
+import { patientFullName } from "@/lib/patient-format";
+import type { Patient } from "@/generated/prisma/client";
 
 export interface OverdueRecallsCardProps {
-  patients: SamplePatient[];
+  patients: Patient[];
 }
 
 /**
@@ -20,7 +21,7 @@ export interface OverdueRecallsCardProps {
  * action on the Messages screen for patients already in a thread.
  */
 export function OverdueRecallsCard({ patients }: OverdueRecallsCardProps) {
-  const overdue = patients.filter((p) => p.recallStatus.toLowerCase().includes("overdue"));
+  const overdue = patients.filter((p) => (p.recallStatus ?? "").toLowerCase().includes("overdue"));
   const [activePatientId, setActivePatientId] = useState<string | null>(null);
   const [sentIds, setSentIds] = useState<Record<string, boolean>>({});
 
@@ -39,7 +40,7 @@ export function OverdueRecallsCard({ patients }: OverdueRecallsCardProps) {
             const name = patientFullName(patient);
             const wasSent = sentIds[patient.id];
             return (
-              <div key={patient.id} className="flex items-center justify-between gap-3">
+              <div key={patient.id} className="flex min-w-0 items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar name={name} src={patient.photoUrl} size="sm" />
                   <div className="min-w-0">

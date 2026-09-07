@@ -1,20 +1,28 @@
 import type { Metadata } from "next";
 import { ScheduleBoard } from "@/components/dentist/ScheduleBoard";
-import { appointments, scheduleWaitlist } from "@/lib/sample-data";
+import { requireRole } from "@/lib/auth/authorize";
+import { todaysAppointmentsForProvider, appointmentsForProvider } from "@/lib/data/appointments";
+import { listWaitlistEntries } from "@/lib/data/waitlist";
 
 export const metadata: Metadata = {
   title: "My Schedule",
   description: "Today's appointments, open time waitlist, and visit history.",
 };
 
-const TODAY = new Date("2026-08-24T12:00:00.000Z");
+export default async function SchedulePage() {
+  const session = await requireRole(["DENTIST", "ADMIN"]);
+  const { organizationId, id: providerId } = session.user;
+  const today = new Date();
 
-export default function SchedulePage() {
-  const todayIso = TODAY.toISOString().slice(0, 10);
-  const todaysAppointments = appointments.filter((a) => a.startTime.startsWith(todayIso));
-  const recentVisits = appointments
+  const [todaysAppointments, allAppointments, waitlist] = await Promise.all([
+    todaysAppointmentsForProvider(organizationId, providerId),
+    appointmentsForProvider(organizationId, providerId),
+    listWaitlistEntries(organizationId),
+  ]);
+
+  const recentVisits = allAppointments
     .filter((a) => a.status === "COMPLETED")
-    .sort((a, b) => b.startTime.localeCompare(a.startTime));
+    .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
 
   return (
     <div className="flex flex-col gap-6">
@@ -26,10 +34,11 @@ export default function SchedulePage() {
       </div>
 
       <ScheduleBoard
-        date={TODAY}
+        date={today}
         appointments={todaysAppointments}
-        waitlist={scheduleWaitlist}
+        waitlist={waitlist}
         recentVisits={recentVisits}
+        providerId={providerId}
       />
     </div>
   );

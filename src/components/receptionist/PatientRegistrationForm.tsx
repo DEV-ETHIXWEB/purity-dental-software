@@ -7,8 +7,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import type { SamplePatient } from "@/lib/sample-data";
-import { addRegisteredPatient } from "@/lib/receptionist-patients-store";
 import { registerPatient } from "@/lib/actions/register-patient";
 import {
   patientRegistrationSchema,
@@ -33,14 +31,6 @@ const EMPTY_FORM: PatientRegistrationInput = {
   insurancePlan: "",
 };
 
-function slugify(input: string) {
-  return input
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
-
 /**
  * Multi-field new-patient registration form. Client-side validated with zod
  * (required fields, email/phone format, DOB must be a real, non-future,
@@ -50,14 +40,9 @@ function slugify(input: string) {
  * that file's header comment for why the Server Action can't rely on this
  * client-side check or on middleware alone.
  *
- * The action performs a real Prisma write and will only succeed once a
- * live database is connected (see the task README) — until then it
- * degrades to a clear "temporarily unavailable" error rather than a raw
- * 500/stack trace. In that case (and only that case) the sample UI falls
- * back to the session-lifetime in-memory store
- * (`receptionist-patients-store.ts`) purely so the registration flow
- * remains demoable against the sample data in this DB-less phase; once a
- * real database exists this fallback is no longer needed.
+ * The action performs a real Prisma write, scoped to the signed-in
+ * receptionist's own organization; a database-unavailable error surfaces
+ * here as a clear message rather than a raw 500/stack trace.
  */
 export function PatientRegistrationForm() {
   const router = useRouter();
@@ -119,32 +104,11 @@ export function PatientRegistrationForm() {
         return;
       }
 
-      // No live database yet in this phase of the project — the action
-      // returns a clear "temporarily unavailable" error rather than a raw
-      // 500. Fall back to the in-memory sample store so the flow stays
-      // demoable against `sample-data.ts` until a real DB is connected.
-      const idBase = slugify(`${data.firstName}_${data.lastName}`) || "patient";
-      const newPatient: SamplePatient = {
-        id: `pat_${idBase}_${Date.now().toString(36)}`,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        dateOfBirth: data.dateOfBirth,
-        sex: data.sex,
-        phone: data.phone,
-        email: data.email,
-        insuranceProvider: data.insuranceProvider,
-        insurancePlan: data.insurancePlan,
-        balanceCents: 0,
-        medicalAlerts: [],
-        lastCleaningAt: null,
-        recallStatus: "New patient",
-        nextApptAt: null,
-        status: "Active",
-      };
-
-      addRegisteredPatient(newPatient);
-      setStatus("success");
-      router.push(`/receptionist/patients/${newPatient.id}`);
+      setStatus("error");
+      setSubmitError(actionResult.message);
+      if (actionResult.fieldErrors) {
+        setErrors(actionResult.fieldErrors as PatientRegistrationErrors);
+      }
     } catch {
       setStatus("error");
       setSubmitError("Something went wrong while registering this patient. Please try again.");

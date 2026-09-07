@@ -1,87 +1,79 @@
 import type { Metadata } from "next";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { DashboardHero } from "@/components/dentist/DashboardHero";
-import { TodaysVisitsRing } from "@/components/dentist/TodaysVisitsRing";
-import { WeeklyVisitsChart } from "@/components/dentist/WeeklyVisitsChart";
+import { TodaysVisitsCard } from "@/components/dentist/TodaysVisitsCard";
 import { RecentConsultationCard } from "@/components/dentist/RecentConsultationCard";
 import { FollowUpsCard } from "@/components/dentist/FollowUpsCard";
-import { AppointmentListItem } from "@/components/dentist/AppointmentListItem";
-import { MiniCalendar } from "@/components/dentist/MiniCalendar";
+import { UpcomingCard } from "@/components/dentist/UpcomingCard";
+import { requireRole } from "@/lib/auth/authorize";
 import {
-  appointments,
-  todaysAppointments,
+  appointmentsForProvider,
   weeklyVisitCounts,
-  followUps,
-  getPatientById,
-  currentProvider,
-} from "@/lib/sample-data";
+  todaysVisitBreakdown,
+} from "@/lib/data/appointments";
+import { listFollowUps } from "@/lib/data/patients";
 
 export const metadata: Metadata = {
   title: "Dashboard",
   description: "Today's visits, weekly volume, follow-ups, and upcoming appointments.",
 };
 
-const TODAY = new Date("2026-08-24T12:00:00.000Z");
+export default async function DashboardPage() {
+  const session = await requireRole(["DENTIST", "ADMIN"]);
+  const { organizationId, id: providerId, name } = session.user;
 
-export default function DashboardPage() {
-  const today = todaysAppointments();
-  const completedToday = today.filter((a) => a.status === "COMPLETED").length;
-  const weekly = weeklyVisitCounts();
+  const [visitBreakdown, weekly, allAppointments, followUps] = await Promise.all([
+    todaysVisitBreakdown(organizationId, providerId),
+    weeklyVisitCounts(organizationId, providerId),
+    appointmentsForProvider(organizationId, providerId),
+    listFollowUps(organizationId),
+  ]);
 
-  const recentPatient = getPatientById("pat_sarah_johnson")!;
-  const upcoming = [...appointments]
-    .filter((a) => new Date(a.startTime) >= TODAY && a.status !== "CANCELLED")
-    .sort((a, b) => a.startTime.localeCompare(b.startTime))
-    .slice(0, 5);
-
-  const markedDates = new Set(appointments.map((a) => a.startTime.slice(0, 10)));
+  const recentConsultation = allAppointments
+    .filter((a) => a.status === "COMPLETED")
+    .sort((a, b) => b.startTime.getTime() - a.startTime.getTime())[0];
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold text-text-primary">
-          Good afternoon, {currentProvider.name}
-        </h1>
-        <p className="text-sm text-text-secondary">
-          Here&apos;s what&apos;s happening in your practice today.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Dashboard</h1>
+        <p className="text-sm text-text-secondary">Welcome back, {name}</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2 overflow-hidden">
-          <div className="grid grid-cols-1 sm:grid-cols-2">
-            <CardContent className="flex flex-col justify-center gap-6">
-              <TodaysVisitsRing completed={completedToday} total={today.length || 1} />
-              <div>
-                <p className="mb-3 text-sm font-semibold text-text-primary">This Week</p>
-                <WeeklyVisitsChart data={weekly} />
-              </div>
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-2">
+          <DashboardHero onTimePct={visitBreakdown.onTimePct} recallsDue={followUps.length} />
+        </div>
+        <div className="lg:col-span-3">
+          <TodaysVisitsCard
+            total={visitBreakdown.total}
+            newCount={visitBreakdown.newCount}
+            returningCount={visitBreakdown.returningCount}
+            weekly={weekly}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+        {recentConsultation ? (
+          <RecentConsultationCard
+            patient={recentConsultation.patient}
+            observation={`${recentConsultation.procedureType} completed on ${recentConsultation.startTime.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`}
+          />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Consultation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-text-secondary">No completed visits yet.</p>
             </CardContent>
-            <DashboardHero />
-          </div>
-        </Card>
+          </Card>
+        )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Upcoming</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <MiniCalendar referenceDate={TODAY} markedDates={markedDates} />
-            <ul className="divide-y divide-border">
-              {upcoming.map((a) => (
-                <AppointmentListItem key={a.id} appointment={a} />
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
+        <FollowUpsCard patients={followUps} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <RecentConsultationCard
-          patient={recentPatient}
-          observation="Patient reports mild sensitivity on the upper right quadrant. Recommended a follow-up in 3 months to reassess after the composite filling."
-        />
-        <FollowUpsCard items={followUps} />
+        <UpcomingCard appointments={allAppointments} />
       </div>
     </div>
   );
