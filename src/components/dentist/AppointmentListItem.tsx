@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cn } from "@/lib/cn";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { patientFullName } from "@/lib/patient-format";
@@ -39,14 +40,28 @@ export function AppointmentListItem({ appointment, basePath = "" }: AppointmentL
   });
 
   return (
-    <li className="flex items-center gap-3 py-2.5">
-      <div className="w-16 shrink-0 text-sm font-medium text-text-secondary">{time}</div>
-      {patient && <Avatar name={patientFullName(patient)} src={patient.photoUrl ?? undefined} size="sm" />}
+    <li
+      className={cn(
+        "group/appt -mx-2 flex items-center gap-3 rounded-[var(--radius-md)] px-2 py-2.5",
+        "transition-colors duration-200 ease-out hover:bg-surface-muted",
+      )}
+    >
+      <div className="w-16 shrink-0 text-sm font-medium text-text-secondary transition-colors duration-200 ease-out group-hover/appt:text-text-primary">
+        {time}
+      </div>
+      {patient && (
+        <Avatar
+          name={patientFullName(patient)}
+          src={patient.photoUrl ?? undefined}
+          size="sm"
+          className="transition-transform duration-200 ease-out group-hover/appt:-translate-y-0.5 motion-reduce:group-hover/appt:translate-y-0"
+        />
+      )}
       <div className="min-w-0 flex-1">
         {patient ? (
           <Link
             href={`${basePath}/patients/${patient.id}`}
-            className="truncate text-sm font-medium text-text-primary hover:text-[var(--color-brand-blue-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
+            className="truncate text-sm font-medium text-text-primary transition-all duration-200 ease-out group-hover/appt:-translate-y-0.5 group-hover/appt:text-[var(--color-brand-blue-text)] motion-reduce:group-hover/appt:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
           >
             {patientFullName(patient)}
           </Link>

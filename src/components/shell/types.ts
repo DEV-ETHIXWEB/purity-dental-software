@@ -38,6 +38,8 @@ export interface ShellConfig {
   };
   /** This portal's patient list route — the top bar's search form submits here as `?q=`. */
   patientsHref: string;
+  /** Where the top bar's avatar menu sends the user to view their profile — each portal's Settings page, which leads with the Profile card. */
+  profileHref: string;
   /** This portal's Messages route, if it has one (Hygienist/Patient only) — shows the top bar's Messages icon. Omit to hide it. */
   messagesHref?: string;
   /** Whether to show the top bar notification dot — computed server-side from real unread messages / overdue follow-ups, never hardcoded on. */

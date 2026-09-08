@@ -62,11 +62,19 @@ export function StatStrip({ items, className, variant = "inline" }: StatStripPro
     >
       {items.map((item) =>
         variant === "badge" ? (
-          <div key={item.label} className="flex items-center gap-3 px-5 py-4">
+          <div key={item.label} className="flex items-center gap-2.5 px-4 py-4 sm:gap-3 sm:px-5">
             {item.icon && <IconBadge icon={item.icon} tone={item.iconTone ?? "blue"} />}
             <div className="flex min-w-0 flex-col gap-0.5">
               <span className="truncate text-xs font-medium text-text-secondary">{item.label}</span>
-              <p className={cn("text-[22px] font-semibold leading-tight tabular-nums", TONE_TEXT[item.tone ?? "default"])}>
+              <p
+                className={cn(
+                  // Steps down below `sm` so a full currency figure
+                  // ("$2,308.77") still fits the 2-up grid on a phone —
+                  // at the desktop size it overflowed and clipped.
+                  "text-[18px] font-semibold leading-tight tabular-nums sm:text-[22px]",
+                  TONE_TEXT[item.tone ?? "default"],
+                )}
+              >
                 {item.value}
               </p>
               {item.deltaPct != null && (
@@ -78,12 +86,17 @@ export function StatStrip({ items, className, variant = "inline" }: StatStripPro
             </div>
           </div>
         ) : (
-          <div key={item.label} className="flex flex-col gap-1.5 px-5 py-4">
+          <div key={item.label} className="flex flex-col gap-1.5 px-4 py-4 sm:px-5">
             <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
               {item.icon && <item.icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
               <span className="truncate">{item.label}</span>
             </div>
-            <p className={cn("text-[26px] font-semibold leading-none tabular-nums", TONE_TEXT[item.tone ?? "default"])}>
+            <p
+              className={cn(
+                "text-[21px] font-semibold leading-none tabular-nums sm:text-[26px]",
+                TONE_TEXT[item.tone ?? "default"],
+              )}
+            >
               {item.value}
             </p>
           </div>

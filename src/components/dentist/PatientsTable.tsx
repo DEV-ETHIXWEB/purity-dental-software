@@ -75,10 +75,18 @@ export function PatientsTable({ patients, basePath = "", initialQuery = "" }: Pa
                 <TableCell>
                   <Link
                     href={`${basePath}/patients/${p.id}`}
-                    className="flex items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
+                    className="group/name flex items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
                   >
-                    <Avatar name={patientFullName(p)} src={p.photoUrl} size="sm" />
-                    <span className="font-medium text-text-primary hover:text-[var(--color-brand-blue-text)]">
+                    <Avatar
+                      name={patientFullName(p)}
+                      src={p.photoUrl}
+                      size="sm"
+                      className="transition-transform duration-200 ease-out group-hover/name:-translate-y-0.5 motion-reduce:group-hover/name:translate-y-0"
+                    />
+                    {/* Lifts a couple of pixels on hover — the row already
+                        tints, so the name needs a lighter touch than a
+                        second background change. */}
+                    <span className="font-medium text-text-primary transition-all duration-200 ease-out group-hover/name:-translate-y-0.5 group-hover/name:text-[var(--color-brand-blue-text)] motion-reduce:group-hover/name:translate-y-0">
                       {patientFullName(p)}
                     </span>
                   </Link>

@@ -246,3 +246,208 @@ body {
     animation: none;
   }
 }
+
+/*
+ * Chart motion & interaction — entry animations and hover affordances for
+ * the Billing dashboard's charts (Cashflow Trend, Collection Rate,
+ * Outstanding by Age) and the Recent Transactions list.
+ *
+ * Everything here animates ONLY `transform`, `opacity` and
+ * `stroke-dashoffset` — compositor-friendly properties that never trigger
+ * layout, so the motion stays smooth without being expensive. As with the
+ * motion system above, these are named classes only: a dynamic inline
+ * `style=` (the usual way to stagger a delay or set a dash offset) is
+ * silently dropped by the app's strict nonce-based CSP.
+ */
+
+/* Vertical bar grow, anchored to the baseline. `transform-box: fill-box`
+   makes `transform-origin` resolve against the <rect>'s own bounding box
+   rather than the SVG viewport origin, so each bar grows from its own
+   bottom edge regardless of where it sits along the x-axis. */
+@keyframes purity-bar-rise {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+.chart-bar-rise {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: purity-bar-rise 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Horizontal bar grow for the Outstanding-by-Age pills. */
+@keyframes purity-bar-grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.chart-bar-grow-x {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: purity-bar-grow-x 640ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Collection-rate ring sweep. The element's own `stroke-dashoffset`
+   attribute is the target value, so the keyframe only needs a `from` —
+   CSS fills the `to` in from the computed value. The hardcoded 289.03 is
+   the ring's full circumference (2 x PI x r, r=46 in CollectionRateRing);
+   starting there means "no arc drawn" and animating to the real offset
+   sweeps the arc clockwise into place. Keep the two in sync if r changes. */
+@keyframes purity-ring-draw {
+  from { stroke-dashoffset: 289.03; }
+}
+.chart-ring-draw {
+  animation: purity-ring-draw 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Row/label entry — a short fade with a small upward settle. */
+@keyframes purity-rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-rise-in {
+  animation: purity-rise-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Tooltip entry — quicker and tighter than the modal's scale-in, so it
+   feels attached to the cursor rather than presented. */
+@keyframes purity-tooltip-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-tooltip-in {
+  animation: purity-tooltip-in 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Staggered start offsets. Named classes rather than an inline
+   `animation-delay` (CSP), covering the 12 months of the cashflow chart —
+   the longest series on the page. */
+.stagger-0 { animation-delay: 0ms; }
+.stagger-1 { animation-delay: 40ms; }
+.stagger-2 { animation-delay: 80ms; }
+.stagger-3 { animation-delay: 120ms; }
+.stagger-4 { animation-delay: 160ms; }
+.stagger-5 { animation-delay: 200ms; }
+.stagger-6 { animation-delay: 240ms; }
+.stagger-7 { animation-delay: 280ms; }
+.stagger-8 { animation-delay: 320ms; }
+.stagger-9 { animation-delay: 360ms; }
+.stagger-10 { animation-delay: 400ms; }
+.stagger-11 { animation-delay: 440ms; }
+
+/*
+ * Sidebar highlight. A single pill slides between nav items instead of each
+ * item fading its own background in — it tracks the cursor on hover and
+ * settles back onto the current page's item when the pointer leaves.
+ *
+ * The rail's items are a uniform 36px tall on a 38px stride (36px + the
+ * list's 2px gap), so every stop is a fixed offset and can be a named
+ * class. That matters here: the usual way to build a sliding indicator is a
+ * measured `style="transform: translateY(...)"`, and this app's CSP drops
+ * inline style attributes outright. Positions run to 7 for headroom — the
+ * longest nav (Hygienist / Patient) is 6 items.
+ *
+ * The active item keeps its blue left border regardless of where the pill
+ * currently sits, so hovering elsewhere never loses your place.
+ */
+.nav-pill {
+  transition:
+    transform 380ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 200ms ease-out;
+}
+.nav-pos-0 { transform: translateY(0px); }
+.nav-pos-1 { transform: translateY(38px); }
+.nav-pos-2 { transform: translateY(76px); }
+.nav-pos-3 { transform: translateY(114px); }
+.nav-pos-4 { transform: translateY(152px); }
+.nav-pos-5 { transform: translateY(190px); }
+.nav-pos-6 { transform: translateY(228px); }
+.nav-pos-7 { transform: translateY(266px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-pill {
+    transition: none;
+  }
+}
+
+/*
+ * CTA gradient sweep. The brand fill slides across on hover instead of just
+ * dimming, which is what `hover:opacity-90` used to do on these buttons.
+ *
+ * The gradient carries three stops (teal -> blue -> teal) at twice the
+ * button's width, so the resting frame shows teal->blue exactly as
+ * `.brand-gradient-bg` does and the hover frame lands on blue->teal — both
+ * on-brand, with a continuous sweep between them and a smooth slide back on
+ * hover-out. Animating `background-position` keeps this to a single
+ * paint-only property: no overlay element, no extra stacking context, and
+ * no inline `style=` for the CSP to drop.
+ *
+ * Deliberately scoped to interactive CTAs. `.brand-gradient-bg` is also
+ * used for non-interactive surfaces (auth panel, chat bubbles, avatar
+ * fallbacks) that must not react to hover, so this is a separate class
+ * rather than a change to that one.
+ */
+.cta-gradient-slide {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-brand-teal) 0%,
+    var(--color-brand-blue) 50%,
+    var(--color-brand-teal) 100%
+  );
+  background-size: 200% 100%;
+  background-position: 0% 0;
+  /* This rule is unlayered, so its `transition` shorthand outranks any
+     Tailwind `transition-*` utility on the same element (layered styles
+     always lose to unlayered ones). The extra properties are therefore
+     listed here rather than left to a utility class — without them a CTA
+     that also lifts on hover or depresses on click would snap instead of
+     animating. */
+  transition:
+    background-position 550ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 250ms ease-out,
+    opacity 200ms ease-out,
+    transform 200ms ease-out,
+    scale 200ms ease-out;
+}
+.cta-gradient-slide:hover {
+  background-position: 100% 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cta-gradient-slide {
+    transition: none;
+  }
+  /* Without the sweep the button needs some hover acknowledgement, so fall
+     back to the dimming it had before. */
+  .cta-gradient-slide:hover {
+    background-position: 0% 0;
+    opacity: 0.9;
+  }
+}
+
+/* Confirmation pop — used for the tick that replaces a button's label after
+   a successful save. The slight overshoot is the only "bouncy" motion in
+   the system; it's reserved for success feedback, where it reads as
+   satisfying rather than noisy. */
+@keyframes purity-pop-in {
+  from { opacity: 0; transform: scale(0.7); }
+  60% { transform: scale(1.06); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-pop-in {
+  animation: purity-pop-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-bar-rise,
+  .chart-bar-grow-x,
+  .chart-ring-draw,
+  .animate-rise-in,
+  .animate-tooltip-in,
+  .animate-pop-in {
+    animation: none;
+  }
+  /* Delays are meaningless without the animations, and leaving them set
+     would hold `both`-filled elements at their start state. */
+  .stagger-0, .stagger-1, .stagger-2, .stagger-3, .stagger-4, .stagger-5,
+  .stagger-6, .stagger-7, .stagger-8, .stagger-9, .stagger-10, .stagger-11 {
+    animation-delay: 0ms;
+  }
+}

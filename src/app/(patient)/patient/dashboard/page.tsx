@@ -70,7 +70,7 @@ export default async function PatientDashboardPage() {
                 action={
                   <Link
                     href="/patient/appointments"
-                    className="brand-gradient-bg inline-flex min-h-11 items-center justify-center rounded-[var(--radius-lg)] px-4 text-sm font-medium text-white shadow-card hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+                    className="cta-gradient-slide inline-flex min-h-11 items-center justify-center rounded-[var(--radius-lg)] px-4 text-sm font-medium text-white shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
                   >
                     Book an appointment
                   </Link>

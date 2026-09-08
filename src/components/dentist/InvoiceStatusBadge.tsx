@@ -17,6 +17,10 @@ const LABEL: Record<InvoiceStatus, string> = {
   VOID: "Void",
 };
 
-export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
-  return <Badge tone={TONE[status]}>{LABEL[status]}</Badge>;
+export function InvoiceStatusBadge({ status, className }: { status: InvoiceStatus; className?: string }) {
+  return (
+    <Badge tone={TONE[status]} className={className}>
+      {LABEL[status]}
+    </Badge>
+  );
 }

@@ -51,7 +51,7 @@ export function UpcomingCard({ appointments, basePath }: UpcomingCardProps) {
   const monthLabel = anchorDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="animate-rise-in stagger-5 flex h-full flex-col transition-shadow duration-300 ease-out hover:shadow-card-hover">
       <CardHeader className="items-center">
         <CardTitle>Upcoming</CardTitle>
         <div className="flex items-center gap-1 text-sm">
@@ -59,18 +59,24 @@ export function UpcomingCard({ appointments, basePath }: UpcomingCardProps) {
             type="button"
             onClick={() => setAnchorDate((d) => addDays(d, -7))}
             aria-label="Previous week"
-            className="rounded-[var(--radius-md)] p-1 text-text-secondary hover:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+            className="group/prev rounded-[var(--radius-md)] p-1 text-text-secondary transition-colors duration-200 ease-out hover:bg-surface-muted hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
           >
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            <ChevronLeft
+              className="h-4 w-4 transition-transform duration-200 ease-out group-hover/prev:-translate-x-0.5 motion-reduce:group-hover/prev:translate-x-0"
+              aria-hidden="true"
+            />
           </button>
           <span className="min-w-[9ch] text-center font-medium text-text-primary">{monthLabel}</span>
           <button
             type="button"
             onClick={() => setAnchorDate((d) => addDays(d, 7))}
             aria-label="Next week"
-            className="rounded-[var(--radius-md)] p-1 text-text-secondary hover:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+            className="group/next rounded-[var(--radius-md)] p-1 text-text-secondary transition-colors duration-200 ease-out hover:bg-surface-muted hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
           >
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            <ChevronRight
+              className="h-4 w-4 transition-transform duration-200 ease-out group-hover/next:translate-x-0.5 motion-reduce:group-hover/next:translate-x-0"
+              aria-hidden="true"
+            />
           </button>
         </div>
       </CardHeader>
@@ -85,17 +91,23 @@ export function UpcomingCard({ appointments, basePath }: UpcomingCardProps) {
                 type="button"
                 onClick={() => setAnchorDate(d)}
                 aria-current={isActive ? "date" : undefined}
-                className="flex flex-col items-center gap-1 rounded-[var(--radius-md)] py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+                className="group/day flex flex-col items-center gap-1 rounded-[var(--radius-md)] py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
               >
-                <span className="text-[10px] font-medium text-text-secondary">{DAY_LETTERS[i]}</span>
+                <span className="text-[10px] font-medium text-text-secondary transition-colors duration-200 ease-out group-hover/day:text-text-primary">
+                  {DAY_LETTERS[i]}
+                </span>
                 <span
+                  /* Re-keyed on selection so the pop animation replays each
+                     time a different day becomes the active one. */
+                  key={isActive ? "active" : "idle"}
                   className={cn(
                     "flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium",
+                    "transition-all duration-200 ease-out group-hover/day:scale-110 motion-reduce:group-hover/day:scale-100",
                     isActive
-                      ? "bg-[var(--color-brand-blue)] text-white"
+                      ? "animate-pop-in bg-[var(--color-brand-blue)] text-white"
                       : isToday
-                        ? "text-[var(--color-brand-blue-text)]"
-                        : "text-text-primary hover:bg-surface-muted",
+                        ? "text-[var(--color-brand-blue-text)] group-hover/day:bg-surface-muted"
+                        : "text-text-primary group-hover/day:bg-surface-muted",
                   )}
                 >
                   {d.getDate()}
@@ -107,7 +119,7 @@ export function UpcomingCard({ appointments, basePath }: UpcomingCardProps) {
 
         <div className="flex-1">
           {dayAppointments.length === 0 ? (
-            <p className="py-6 text-center text-sm text-text-secondary">No visits this day.</p>
+            <p className="animate-rise-in py-6 text-center text-sm text-text-secondary">No visits this day.</p>
           ) : (
             <ul className="divide-y divide-border">
               {dayAppointments.map((appt) => (

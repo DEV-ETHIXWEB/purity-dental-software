@@ -4,14 +4,14 @@ import { useId } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Menu } from "lucide-react";
-import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/cn";
 import { ChatIconFilled, NotificationIcon, NotificationIconFilled } from "@/components/ui/icons/purity-icons";
+import { ProfileMenu } from "./ProfileMenu";
 import { SHELL_ICONS } from "./icon-map";
 import type { ShellConfig } from "./types";
 
 const PRIMARY_ACTION_CLASSES =
-  "inline-flex items-center rounded-[var(--radius-lg)] font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] brand-gradient-bg text-white shadow-card hover:opacity-90 active:opacity-95";
+  "inline-flex items-center rounded-[var(--radius-lg)] font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] cta-gradient-slide text-white shadow-card active:opacity-95";
 
 export interface TopBarProps {
   onOpenMobileNav: () => void;
@@ -19,6 +19,7 @@ export interface TopBarProps {
   searchPlaceholder?: string;
   primaryAction?: ShellConfig["primaryAction"];
   patientsHref: string;
+  profileHref: string;
   messagesHref?: string;
   hasUnreadNotifications?: boolean;
 }
@@ -29,6 +30,7 @@ export function TopBar({
   searchPlaceholder,
   primaryAction,
   patientsHref,
+  profileHref,
   messagesHref,
   hasUnreadNotifications,
 }: TopBarProps) {
@@ -45,8 +47,12 @@ export function TopBar({
     router.push(q ? `${patientsHref}?q=${encodeURIComponent(q)}` : patientsHref);
   }
 
+  // Stays put while the page scrolls: PortalShell sizes the shell to the
+  // viewport and scrolls <main> instead, so this bar sits outside the
+  // scrolling region rather than needing `position: sticky` (which the root
+  // layout's `overflow-x: hidden` would defeat — see PortalShell).
   return (
-    <header className="flex h-16 items-center gap-3 border-b border-border bg-surface px-4 sm:px-6">
+    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 sm:px-6">
       <button
         type="button"
         onClick={onOpenMobileNav}
@@ -73,7 +79,11 @@ export function TopBar({
         />
       </form>
 
-      <div className="flex flex-1 items-center justify-end gap-2 sm:flex-none">
+      {/* `ml-auto` is what pins this cluster to the right edge: from `sm:` up
+          the search form stops growing (`max-w-md`) and this group drops its
+          `flex-1`, so without an auto margin both sit bunched against the
+          left with dead space to their right. */}
+      <div className="ml-auto flex flex-1 items-center justify-end gap-2 sm:flex-none">
         <Link
           href={patientsHref}
           aria-label="Search patients"
@@ -123,12 +133,7 @@ export function TopBar({
           </>
         ) : null}
 
-        <div className="ml-1 flex items-center gap-2 border-l border-border pl-3">
-          <Avatar name={user.name} src={user.avatarUrl} size="sm" />
-          <span className="hidden text-sm font-medium text-text-primary md:inline lg:hidden">
-            {user.name}
-          </span>
-        </div>
+        <ProfileMenu user={user} profileHref={profileHref} />
       </div>
     </header>
   );

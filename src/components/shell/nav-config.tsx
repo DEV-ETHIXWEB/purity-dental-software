@@ -23,6 +23,7 @@ export function dentistShellConfig(user: ShellUser, hasUnreadNotifications = fal
     searchPlaceholder: "Search patients, appointments, invoices…",
     primaryAction: { label: "New Appointment", icon: "plus", href: "/schedule" },
     patientsHref: "/patients",
+    profileHref: "/settings",
     hasUnreadNotifications,
   };
 }
@@ -42,6 +43,7 @@ export function hygienistShellConfig(user: ShellUser, hasUnreadNotifications = f
     searchPlaceholder: "Search patients, appointments, invoices…",
     primaryAction: { label: "New Appointment", icon: "plus", href: "/hygienist/schedule" },
     patientsHref: "/hygienist/patients",
+    profileHref: "/hygienist/settings",
     messagesHref: "/hygienist/messages",
     hasUnreadNotifications,
   };
@@ -70,6 +72,7 @@ export function receptionistShellConfig(user: ShellUser, hasUnreadNotifications 
       href: "/receptionist/patients/new",
     },
     patientsHref: "/receptionist/patients",
+    profileHref: "/receptionist/settings",
     hasUnreadNotifications,
   };
 }
@@ -100,6 +103,7 @@ export function patientShellConfig(user: ShellUser, hasUnreadNotifications = fal
       href: "/patient/appointments",
     },
     patientsHref: "/patient/appointments",
+    profileHref: "/patient/settings",
     messagesHref: "/patient/messages",
     hasUnreadNotifications,
   };

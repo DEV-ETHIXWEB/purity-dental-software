@@ -35,7 +35,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      <div className="animate-rise-in stagger-0">
         <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Dashboard</h1>
         <p className="text-sm text-text-secondary">Welcome back, {name}</p>
       </div>
@@ -61,7 +61,7 @@ export default async function DashboardPage() {
             observation={`${recentConsultation.procedureType} completed on ${recentConsultation.startTime.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`}
           />
         ) : (
-          <Card>
+          <Card className="animate-rise-in stagger-3 transition-shadow duration-300 ease-out hover:shadow-card-hover">
             <CardHeader>
               <CardTitle>Recent Consultation</CardTitle>
             </CardHeader>
