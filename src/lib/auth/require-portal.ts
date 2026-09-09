@@ -32,3 +32,33 @@ export async function requirePortalRole(allowedRole: UserRole) {
 
   return session;
 }
+
+/**
+ * Page-level role gate. Same rule as `requirePortalRole`, but takes the list
+ * of roles a page allows rather than the one role a portal belongs to.
+ *
+ * Exists because pages previously used `requireRole` from `authorize.ts`,
+ * which *throws* on a wrong role. A page and its layout render concurrently,
+ * so that throw raced the layout's redirect: usually the redirect won and the
+ * visitor landed on their own dashboard, but when the throw won first they
+ * got the "Something went wrong" boundary instead. A visitor opening a page
+ * meant for another role has made a navigation mistake, not triggered a
+ * crash, so this always redirects them to their own portal.
+ *
+ * `requireRole` stays as-is and is still the right call in Server Actions and
+ * Route Handlers, where there is no page to redirect and the caller needs a
+ * typed failure it can return to the client.
+ */
+export async function requirePageRole(allowedRoles: UserRole[]) {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  if (!allowedRoles.includes(session.user.role)) {
+    redirect(dashboardPathForRole(session.user.role));
+  }
+
+  return session;
+}

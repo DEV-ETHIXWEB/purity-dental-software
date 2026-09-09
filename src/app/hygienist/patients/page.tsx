@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PatientsTable } from "@/components/dentist/PatientsTable";
 import { OverdueRecallsCard } from "@/components/hygienist/OverdueRecallsCard";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { listPatients } from "@/lib/data/patients";
 
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default async function HygienistPatientsPage({
   searchParams,
 }: PageProps<"/hygienist/patients">) {
-  const session = await requireRole(["HYGIENIST", "ADMIN"]);
+  const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
   const patients = await listPatients(session.user.organizationId);
   const { q } = await searchParams;
 
@@ -21,7 +21,7 @@ export default async function HygienistPatientsPage({
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">Patients</h1>
         <p className="text-sm text-text-secondary">
-          {patients.length} patients in the practice.
+          {patients.length} {patients.length === 1 ? "patient" : "patients"} in the practice.
         </p>
       </div>
 

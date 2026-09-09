@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { PatientMessagesView } from "./PatientMessagesView";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { getPatientForUser } from "@/lib/data/patients";
 import { conversationForPatient, messagesForConversation } from "@/lib/data/messaging";
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PatientMessagesPage() {
-  const session = await requireRole(["PATIENT"]);
+  const session = await requirePageRole(["PATIENT"]);
   const patient = await getPatientForUser(session.user.id);
   if (!patient) notFound();
 

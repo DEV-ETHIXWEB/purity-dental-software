@@ -165,7 +165,7 @@ export function NewInvoiceModal({ patients }: { patients: Patient[] }) {
                     value={row.description}
                     onChange={(e) => updateRow(i, { description: e.target.value })}
                     placeholder="Description"
-                    className={`flex-1 ${FIELD_CLASSES}`}
+                    className={`min-w-0 flex-1 ${FIELD_CLASSES}`}
                   />
                   <input
                     value={row.procedureCode}
@@ -183,32 +183,37 @@ export function NewInvoiceModal({ patients }: { patients: Patient[] }) {
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
-                <div className="flex gap-2">
+                {/* A grid, not a flex row: as four flex items these refused to
+                    shrink past their placeholder text, so on a phone the row
+                    overflowed and pushed "Unit price" — a required field —
+                    behind a horizontal scrollbar inside the modal. Two-up
+                    until there's room for the 4-track layout. */}
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_4rem_6rem]">
                   <input
                     value={row.tooth}
                     onChange={(e) => updateRow(i, { tooth: e.target.value })}
                     placeholder="Tooth (optional)"
-                    className={`flex-1 ${FIELD_CLASSES}`}
+                    className={`min-w-0 ${FIELD_CLASSES}`}
                   />
                   <input
                     value={row.quadrant}
                     onChange={(e) => updateRow(i, { quadrant: e.target.value })}
                     placeholder="Quadrant (optional)"
-                    className={`flex-1 ${FIELD_CLASSES}`}
+                    className={`min-w-0 ${FIELD_CLASSES}`}
                   />
                   <input
                     value={row.quantity}
                     onChange={(e) => updateRow(i, { quantity: e.target.value })}
                     placeholder="Qty"
                     inputMode="numeric"
-                    className={`w-16 ${FIELD_CLASSES}`}
+                    className={`min-w-0 ${FIELD_CLASSES}`}
                   />
                   <input
                     value={row.unitPrice}
                     onChange={(e) => updateRow(i, { unitPrice: e.target.value })}
                     placeholder="Unit price"
                     inputMode="decimal"
-                    className={`w-24 ${FIELD_CLASSES}`}
+                    className={`min-w-0 ${FIELD_CLASSES}`}
                   />
                 </div>
               </div>

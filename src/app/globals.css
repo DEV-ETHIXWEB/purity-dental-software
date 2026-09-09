@@ -368,6 +368,40 @@ body {
   }
 }
 
+/* Individual crowns in the patient "teeth at a glance" arch. Hovering one
+   lifts it off the arch slightly so it can be picked out and its tooltip
+   read. `transform-box: fill-box` keeps the origin on the crown itself
+   rather than the SVG viewport, and the transform lives on the <path> —
+   the wrapping <g> already carries a transform attribute placing it on the
+   arch, which a CSS transform would overwrite. */
+.tooth path {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), filter 200ms ease-out;
+}
+.tooth:hover path {
+  transform: scale(1.14);
+  filter: drop-shadow(0 1px 2px rgb(16 24 40 / 0.22));
+}
+@media (prefers-reduced-motion: reduce) {
+  .tooth path,
+  .tooth:hover path {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* Swipeable overflow without a visible scrollbar — used by the tab strips,
+   which scroll horizontally on a phone but shouldn't show a chunky native
+   bar underneath them. */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /*
  * CTA gradient sweep. The brand fill slides across on hover instead of just
  * dimming, which is what `hover:opacity-90` used to do on these buttons.
@@ -449,5 +483,120 @@ body {
   .stagger-0, .stagger-1, .stagger-2, .stagger-3, .stagger-4, .stagger-5,
   .stagger-6, .stagger-7, .stagger-8, .stagger-9, .stagger-10, .stagger-11 {
     animation-delay: 0ms;
+  }
+}
+
+/*
+ * Patient first-run intro carousel (src/components/patient/PatientOnboarding.tsx).
+ *
+ * The slide track is moved by a fixed-offset class per index rather than an
+ * inline `transform`, for exactly the same CSP reason as `.nav-pos-*`
+ * above: `style-src` carries a nonce and no `unsafe-inline`, so a computed
+ * inline style is silently dropped in production. Four slides, so four
+ * offsets — keep this in step with `SLIDES` in that component.
+ *
+ * Only `transform` animates (compositor-friendly, no layout or paint), and
+ * the whole thing collapses to an instant cut under reduced motion.
+ */
+.onboarding-track {
+  transition: transform 460ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.onboarding-pos-0 { transform: translateX(0); }
+.onboarding-pos-1 { transform: translateX(-100%); }
+.onboarding-pos-2 { transform: translateX(-200%); }
+.onboarding-pos-3 { transform: translateX(-300%); }
+
+/* Progress dots: the active one stretches into a pill rather than just
+   changing colour, so the step is readable without relying on hue. */
+.onboarding-dot {
+  transition:
+    width 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 300ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-track,
+  .onboarding-dot {
+    transition: none;
+  }
+}
+
+/* The onboarding artwork is a photo-style PNG carrying its own pale-blue
+   background, so dropped straight onto the screen it reads as a pasted
+   rectangle. Bleeding it to the full screen width kills the side edges;
+   this mask dissolves the remaining top and bottom ones into the page.
+   Declared here rather than inline for the CSP reason noted above. */
+.onboarding-art-fade {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 15%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 15%, #000 86%, transparent 100%);
+}
+
+/*
+ * Mobile bottom tab bar active state (src/components/shell/BottomNav.tsx).
+ *
+ * The active tab's icon sits in a tinted disc with a soft brand-coloured
+ * halo around it. Two layered shadows rather than one: a tight ring that
+ * reads as a defined edge, and a wider, softer bloom that gives it the
+ * glow. Both are `box-shadow`, so nothing here affects layout.
+ */
+.bottomnav-glow {
+  box-shadow:
+    0 0 0 4px rgb(0 145 252 / 0.10),
+    0 4px 14px 0 rgb(0 145 252 / 0.30);
+}
+
+/* Scale + opacity only, so the disc blooms out from the icon's centre
+   instead of sliding in from a neighbouring tab. */
+.bottomnav-disc {
+  transition:
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 240ms ease-out,
+    box-shadow 320ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottomnav-disc {
+    transition: none;
+  }
+}
+
+/*
+ * Progress meter fill (Bills page insurance coverage bar).
+ *
+ * The width is a class per 5% step rather than an inline `style` — the CSP
+ * carries a style nonce with no `unsafe-inline`, so a computed inline width
+ * is silently dropped in production (same reason as `.nav-pos-*`). 5% is
+ * fine-grained enough that the rounding is invisible at bar widths, and 21
+ * classes is a lot cheaper than 101.
+ */
+.meter-fill {
+  background-image: linear-gradient(90deg, var(--color-brand-teal), var(--color-brand-blue));
+  transition: width 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.meter-fill-0 { width: 0%; }
+.meter-fill-5 { width: 5%; }
+.meter-fill-10 { width: 10%; }
+.meter-fill-15 { width: 15%; }
+.meter-fill-20 { width: 20%; }
+.meter-fill-25 { width: 25%; }
+.meter-fill-30 { width: 30%; }
+.meter-fill-35 { width: 35%; }
+.meter-fill-40 { width: 40%; }
+.meter-fill-45 { width: 45%; }
+.meter-fill-50 { width: 50%; }
+.meter-fill-55 { width: 55%; }
+.meter-fill-60 { width: 60%; }
+.meter-fill-65 { width: 65%; }
+.meter-fill-70 { width: 70%; }
+.meter-fill-75 { width: 75%; }
+.meter-fill-80 { width: 80%; }
+.meter-fill-85 { width: 85%; }
+.meter-fill-90 { width: 90%; }
+.meter-fill-95 { width: 95%; }
+.meter-fill-100 { width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .meter-fill {
+    transition: none;
   }
 }

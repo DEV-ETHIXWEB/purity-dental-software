@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PracticeScheduleBoard } from "@/components/receptionist/PracticeScheduleBoard";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { todaysPracticeAppointments } from "@/lib/data/appointments";
 import { listProviders } from "@/lib/data/providers";
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ReceptionistSchedulePage() {
-  const session = await requireRole(["RECEPTIONIST", "ADMIN"]);
+  const session = await requirePageRole(["RECEPTIONIST", "ADMIN"]);
   const { organizationId } = session.user;
   const today = new Date();
 

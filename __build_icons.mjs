@@ -41,6 +41,15 @@ function transform(svgText, componentName) {
 
   body = body.replace(/stop-color="([^"]+)"/g, 'stopColor="$1"');
 
+  // `${uid}` only interpolates inside a JSX expression container — left in a
+  // plain string attribute it emits the literal text "${uid}-0", so every
+  // icon in the app would share one gradient id and `useId()` would be inert.
+  // Promote any attribute carrying the placeholder to {`...`}.
+  body = body.replace(
+    /([a-zA-Z-]+)="([^"]*\$\{uid\}[^"]*)"/g,
+    (_match, attr, value) => `${attr}={\`${value}\`}`,
+  );
+
   return { viewBox, body };
 }
 

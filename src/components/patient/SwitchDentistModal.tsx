@@ -59,7 +59,7 @@ export function SwitchDentistModal({ patientId, currentProviderName, alternatePr
 
   return (
     <>
-      <Button variant="outline" size="sm" className="min-h-11 self-start" onClick={() => setOpen(true)}>
+      <Button variant="outline" size="sm" className="min-h-11 shrink-0 self-start" onClick={() => setOpen(true)}>
         <SwapIcon className="h-4 w-4" aria-hidden="true" />
         Switch dentist
       </Button>

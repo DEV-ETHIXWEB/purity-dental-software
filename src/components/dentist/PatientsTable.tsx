@@ -53,7 +53,7 @@ export function PatientsTable({ patients, basePath = "", initialQuery = "" }: Pa
           onChange={(e) => setQuery(e.target.value)}
         />
         <span className="sr-only" aria-live="polite">
-          {filtered.length} patients found
+          {filtered.length} {filtered.length === 1 ? "patient" : "patients"} found
         </span>
       </div>
 

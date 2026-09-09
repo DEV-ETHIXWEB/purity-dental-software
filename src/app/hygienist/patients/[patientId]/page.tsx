@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
-import { UploadIcon, ReportsIcon, XRaysIcon } from "@/components/ui/icons/purity-raster-icons";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { PatientProfileHeader } from "@/components/dentist/PatientProfileHeader";
@@ -10,15 +9,19 @@ import { BillingDetailsCard } from "@/components/dentist/BillingDetailsCard";
 import { TreatmentPlanTable } from "@/components/dentist/TreatmentPlanTable";
 import { PerioChartCard } from "@/components/dentist/PerioChartCard";
 import { ToothChart } from "@/components/dentist/ToothChart";
-import { requireRole } from "@/lib/auth/authorize";
+import { PatientDocumentsPanel } from "@/components/dentist/PatientDocumentsPanel";
+import { PatientPrescriptionsPanel } from "@/components/dentist/PatientPrescriptionsPanel";
+import { PatientConsentFormsPanel } from "@/components/dentist/PatientConsentFormsPanel";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { getPatientById } from "@/lib/data/patients";
 import { patientFullName } from "@/lib/patient-format";
 import { treatmentPlanForPatient, perioChartForPatient } from "@/lib/data/treatment";
+import { patientRecords } from "@/lib/data/clinical-records";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/hygienist/patients/[patientId]">): Promise<Metadata> {
-  const session = await requireRole(["HYGIENIST", "ADMIN"]);
+  const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
   const { patientId } = await params;
   const patient = await getPatientById(session.user.organizationId, patientId);
   return {
@@ -32,14 +35,15 @@ export async function generateMetadata({
 export default async function HygienistPatientProfilePage({
   params,
 }: PageProps<"/hygienist/patients/[patientId]">) {
-  const session = await requireRole(["HYGIENIST", "ADMIN"]);
+  const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
   const { patientId } = await params;
   const patient = await getPatientById(session.user.organizationId, patientId);
   if (!patient) notFound();
 
-  const [treatmentPlan, perioEntry] = await Promise.all([
+  const [treatmentPlan, perioEntry, records] = await Promise.all([
     treatmentPlanForPatient(session.user.organizationId, patient.id),
     perioChartForPatient(session.user.organizationId, patient.id),
+    patientRecords(session.user.organizationId, patient.id),
   ]);
 
   return (
@@ -77,7 +81,7 @@ export default async function HygienistPatientProfilePage({
                 <TabsList>
                   <TabsTrigger value="treatment-plan">Treatment Plan</TabsTrigger>
                   <TabsTrigger value="perio-chart">Perio Chart</TabsTrigger>
-                  <TabsTrigger value="documents">Documents</TabsTrigger>
+                  <TabsTrigger value="documents">Docs &amp; Rx</TabsTrigger>
                   <TabsTrigger value="tooth-chart">Tooth Chart</TabsTrigger>
                 </TabsList>
 
@@ -90,17 +94,10 @@ export default async function HygienistPatientProfilePage({
                 </TabsContent>
 
                 <TabsContent value="documents">
-                  <div className="flex flex-col items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-border-strong py-12 text-center">
-                    <div className="flex items-center gap-3">
-                      <ReportsIcon className="h-7 w-7" aria-hidden="true" />
-                      <XRaysIcon className="h-7 w-7" aria-hidden="true" />
-                      <UploadIcon className="h-7 w-7" aria-hidden="true" />
-                    </div>
-                    <p className="text-sm font-medium text-text-primary">No documents uploaded</p>
-                    <p className="max-w-xs text-xs text-text-secondary">
-                      X-rays, consent forms, and referral letters for {patientFullName(patient)} will
-                      appear here once document upload is wired up.
-                    </p>
+                  <div className="flex flex-col gap-8">
+                    <PatientDocumentsPanel patientId={patient.id} documents={records.documents} />
+                    <PatientPrescriptionsPanel patientId={patient.id} prescriptions={records.prescriptions} />
+                    <PatientConsentFormsPanel patientId={patient.id} forms={records.consentForms} />
                   </div>
                 </TabsContent>
 

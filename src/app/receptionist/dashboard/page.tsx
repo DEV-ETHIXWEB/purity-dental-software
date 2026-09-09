@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { FrontDeskStatsRow } from "@/components/receptionist/FrontDeskStatsRow";
 import { TodaysVisitsList } from "@/components/receptionist/TodaysVisitsList";
 import { FollowUpsCard } from "@/components/dentist/FollowUpsCard";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { todaysPracticeAppointments } from "@/lib/data/appointments";
 import { listFollowUps } from "@/lib/data/patients";
 
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ReceptionistDashboardPage() {
-  const session = await requireRole(["RECEPTIONIST", "ADMIN"]);
+  const session = await requirePageRole(["RECEPTIONIST", "ADMIN"]);
   const { organizationId } = session.user;
 
   const [today, followUps] = await Promise.all([

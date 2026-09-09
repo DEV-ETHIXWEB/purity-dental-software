@@ -2,14 +2,17 @@ import type { Metadata } from "next";
 import { CalendarCheck, TrendingUp, BellRing, Clock3 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { StatStrip } from "@/components/ui/StatStrip";
-import { WeeklyVisitsChart } from "@/components/dentist/WeeklyVisitsChart";
+import { DashboardHero } from "@/components/dentist/DashboardHero";
+import { TodaysVisitsCard } from "@/components/dentist/TodaysVisitsCard";
+import { UpcomingCard } from "@/components/dentist/UpcomingCard";
 import { RecentConsultationCard } from "@/components/dentist/RecentConsultationCard";
 import { FollowUpsCard } from "@/components/dentist/FollowUpsCard";
 import { TodaysScheduleCard } from "@/components/dentist/TodaysScheduleCard";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import {
   appointmentsForProvider,
   todaysAppointmentsForProvider,
+  todaysVisitBreakdown,
   weeklyVisitCounts,
 } from "@/lib/data/appointments";
 import { listFollowUps } from "@/lib/data/patients";
@@ -20,14 +23,15 @@ export const metadata: Metadata = {
 };
 
 export default async function HygienistDashboardPage() {
-  const session = await requireRole(["HYGIENIST", "ADMIN"]);
+  const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
   const { organizationId, id: providerId, name } = session.user;
 
-  const [today, weekly, allAppointments, followUps] = await Promise.all([
+  const [today, weekly, allAppointments, followUps, visitBreakdown] = await Promise.all([
     todaysAppointmentsForProvider(organizationId, providerId),
     weeklyVisitCounts(organizationId, providerId),
     appointmentsForProvider(organizationId, providerId),
     listFollowUps(organizationId),
+    todaysVisitBreakdown(organizationId, providerId),
   ]);
 
   const completedToday = today.filter((a) => a.status === "COMPLETED").length;
@@ -45,7 +49,7 @@ export default async function HygienistDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      <div className="animate-rise-in stagger-0">
         <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
           {greeting}, {name}
         </h1>
@@ -68,6 +72,25 @@ export default async function HygienistDashboardPage() {
         ]}
       />
 
+      {/* Same headline pairing the Dentist dashboard uses — the illustration
+          carries the on-time and recalls-due chips, and the ring breaks
+          today's visits into new vs. returning with the week's volume
+          underneath. Both components are shared as-is; only the provider
+          whose figures they read changes. */}
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-2">
+          <DashboardHero onTimePct={visitBreakdown.onTimePct} recallsDue={followUps.length} />
+        </div>
+        <div className="lg:col-span-3">
+          <TodaysVisitsCard
+            total={visitBreakdown.total}
+            newCount={visitBreakdown.newCount}
+            returningCount={visitBreakdown.returningCount}
+            weekly={weekly}
+          />
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <TodaysScheduleCard appointments={today} completed={completedToday} basePath="/hygienist" scheduleHref="/hygienist/schedule" />
@@ -75,7 +98,7 @@ export default async function HygienistDashboardPage() {
         <FollowUpsCard patients={followUps} />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
         {recentConsultation ? (
           <RecentConsultationCard
             patient={recentConsultation.patient}
@@ -83,7 +106,7 @@ export default async function HygienistDashboardPage() {
             basePath="/hygienist"
           />
         ) : (
-          <Card>
+          <Card className="animate-rise-in stagger-3 transition-shadow duration-300 ease-out hover:shadow-card-hover">
             <CardHeader>
               <CardTitle>Recent Consultation</CardTitle>
             </CardHeader>
@@ -93,14 +116,7 @@ export default async function HygienistDashboardPage() {
           </Card>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>This Week</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <WeeklyVisitsChart data={weekly} />
-          </CardContent>
-        </Card>
+        <UpcomingCard appointments={allAppointments} basePath="/hygienist" />
       </div>
     </div>
   );

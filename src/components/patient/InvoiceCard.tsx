@@ -31,6 +31,16 @@ interface InvoiceCardProps {
 /** Friendly card presentation of one invoice — used on the Patient billing page instead of a dense table. */
 export function InvoiceCard({ invoice, action }: InvoiceCardProps) {
   const total = invoice.totalCents;
+  // The line items are the pre-adjustment subtotal, and `totalCents` is
+  // already net of insurance and tax (see Invoice.totalCents). Showing only
+  // those two made the card look like it couldn't add up — line items of
+  // $220 + $80 sitting above a "Total" of $180. Spell the adjustments out,
+  // matching the breakdown on the Dentist invoice detail view.
+  const subtotalCents = invoice.lineItems.reduce(
+    (sum, li) => sum + li.unitPriceCents * li.quantity,
+    0,
+  );
+  const hasAdjustments = subtotalCents !== total;
 
   return (
     <Card className="flex flex-col gap-3 p-5">
@@ -56,9 +66,32 @@ export function InvoiceCard({ invoice, action }: InvoiceCardProps) {
         ))}
       </ul>
 
+      {hasAdjustments && (
+        <ul className="flex flex-col gap-1 border-t border-border pt-3 text-sm text-text-secondary">
+          <li className="flex justify-between gap-3">
+            <span>Subtotal</span>
+            <span className="shrink-0 text-text-primary">{formatCentsAsCurrency(subtotalCents)}</span>
+          </li>
+          {invoice.insuranceAdjustmentCents > 0 && (
+            <li className="flex justify-between gap-3">
+              <span>Insurance covers</span>
+              <span className="shrink-0 text-success">
+                -{formatCentsAsCurrency(invoice.insuranceAdjustmentCents)}
+              </span>
+            </li>
+          )}
+          {invoice.taxCents > 0 && (
+            <li className="flex justify-between gap-3">
+              <span>Tax</span>
+              <span className="shrink-0 text-text-primary">{formatCentsAsCurrency(invoice.taxCents)}</span>
+            </li>
+          )}
+        </ul>
+      )}
+
       <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
         <div>
-          <p className="text-xs text-text-secondary">Total</p>
+          <p className="text-xs text-text-secondary">{hasAdjustments ? "You owe" : "Total"}</p>
           <p className="text-base font-semibold text-text-primary">{formatCentsAsCurrency(total)}</p>
         </div>
         {action}

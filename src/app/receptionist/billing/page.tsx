@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { StatStrip } from "@/components/ui/StatStrip";
 import { DollarIconFilled } from "@/components/ui/icons/purity-icons";
 import { InvoicesTable } from "@/components/dentist/InvoicesTable";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { billingSummary, listInvoices } from "@/lib/data/billing";
 import { formatCentsAsCurrency } from "@/lib/billing-format";
 
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ReceptionistBillingPage() {
-  const session = await requireRole(["RECEPTIONIST", "ADMIN"]);
+  const session = await requirePageRole(["RECEPTIONIST", "ADMIN"]);
   const { organizationId } = session.user;
 
   const [summary, invoices] = await Promise.all([

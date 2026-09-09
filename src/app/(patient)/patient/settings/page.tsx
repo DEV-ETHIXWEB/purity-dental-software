@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProfileSettingsCard } from "@/components/shell/ProfileSettingsCard";
 import { NotificationPreferencesCard } from "@/components/shell/NotificationPreferencesCard";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { getPatientForUser } from "@/lib/data/patients";
 import { patientFullName } from "@/lib/patient-format";
 
@@ -18,7 +18,7 @@ const notificationOptions = [
 ];
 
 export default async function PatientSettingsPage() {
-  const session = await requireRole(["PATIENT"]);
+  const session = await requirePageRole(["PATIENT"]);
   const currentPatient = await getPatientForUser(session.user.id);
   if (!currentPatient) notFound();
 

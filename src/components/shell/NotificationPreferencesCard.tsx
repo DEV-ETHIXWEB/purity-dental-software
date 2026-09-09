@@ -65,6 +65,12 @@ export function NotificationPreferencesCard({ items, description, size = "defaul
             />
           </label>
         ))}
+        {/* Said plainly rather than left implicit: these toggles have no
+            backing store yet, and a switch that silently forgets what you
+            set it to is worse than one that tells you so. */}
+        <p className="text-xs text-text-secondary">
+          Delivery preferences aren&apos;t saved yet — everyone currently gets all of the above.
+        </p>
       </CardContent>
     </Card>
   );

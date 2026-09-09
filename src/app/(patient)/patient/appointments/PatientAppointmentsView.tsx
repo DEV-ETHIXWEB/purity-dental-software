@@ -8,6 +8,7 @@ import { AppointmentCard } from "@/components/patient/AppointmentCard";
 import { EmptyState } from "@/components/patient/EmptyState";
 import { BookAppointmentFlow } from "@/components/patient/BookAppointmentFlow";
 import { CancelAppointmentModal } from "@/components/patient/CancelAppointmentModal";
+import { RescheduleAppointmentModal } from "@/components/patient/RescheduleAppointmentModal";
 import { Button } from "@/components/ui/Button";
 import type { AppointmentWithPatientAndProvider } from "@/lib/data/appointments";
 
@@ -24,12 +25,29 @@ export function PatientAppointmentsView({
 }: PatientAppointmentsViewProps) {
   const router = useRouter();
   const [cancelTarget, setCancelTarget] = useState<AppointmentWithPatientAndProvider | null>(null);
+  const [rescheduleTarget, setRescheduleTarget] = useState<AppointmentWithPatientAndProvider | null>(null);
 
   const upcoming = useMemo(() => {
     const now = new Date();
     return initialAppointments
       .filter((a) => a.startTime >= now && a.status !== "CANCELLED" && a.status !== "COMPLETED")
       .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+  }, [initialAppointments]);
+
+  /**
+   * Visits whose time has passed while still open — never completed, never
+   * cancelled. They aren't "upcoming" and they aren't history either, so
+   * without their own section they simply vanished from the patient's view.
+   */
+  const overdue = useMemo(() => {
+    const now = new Date();
+    return initialAppointments
+      .filter(
+        (a) =>
+          a.startTime < now &&
+          (a.status === "SCHEDULED" || a.status === "CONFIRMED" || a.status === "CHECKED_IN"),
+      )
+      .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
   }, [initialAppointments]);
 
   const past = useMemo(
@@ -66,14 +84,24 @@ export function PatientAppointmentsView({
                 <AppointmentCard
                   appointment={appointment}
                   action={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="min-h-11"
-                      onClick={() => setCancelTarget(appointment)}
-                    >
-                      Cancel
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="min-h-11 transition-all duration-200 ease-out hover:shadow-card active:scale-[0.98] motion-reduce:active:scale-100"
+                        onClick={() => setRescheduleTarget(appointment)}
+                      >
+                        Move
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="min-h-11 transition-all duration-200 ease-out active:scale-[0.98] motion-reduce:active:scale-100"
+                        onClick={() => setCancelTarget(appointment)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
                   }
                 />
               </li>
@@ -87,6 +115,45 @@ export function PatientAppointmentsView({
           />
         )}
       </section>
+
+      {overdue.length > 0 && (
+        <section aria-labelledby="overdue-heading" className="flex flex-col gap-3">
+          <h2 id="overdue-heading" className="text-lg font-semibold text-text-primary">
+            Missed visits
+          </h2>
+          <p className="-mt-1 text-sm text-text-secondary">
+            These were booked but never took place. Pick a new time whenever suits you.
+          </p>
+          <ul className="flex flex-col gap-3">
+            {overdue.map((appointment) => (
+              <li key={appointment.id}>
+                <AppointmentCard
+                  appointment={appointment}
+                  action={
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        className="min-h-11 transition-all duration-200 ease-out hover:shadow-card-hover active:scale-[0.98] motion-reduce:active:scale-100"
+                        onClick={() => setRescheduleTarget(appointment)}
+                      >
+                        Reschedule
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="min-h-11"
+                        onClick={() => setCancelTarget(appointment)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section aria-labelledby="past-heading" className="flex flex-col gap-3">
         <h2 id="past-heading" className="text-lg font-semibold text-text-primary">
@@ -113,6 +180,15 @@ export function PatientAppointmentsView({
         appointment={cancelTarget}
         onClose={() => setCancelTarget(null)}
         onConfirm={handleCancelConfirmed}
+      />
+
+      <RescheduleAppointmentModal
+        appointment={rescheduleTarget}
+        onClose={() => setRescheduleTarget(null)}
+        onRescheduled={() => {
+          setRescheduleTarget(null);
+          router.refresh();
+        }}
       />
     </div>
   );

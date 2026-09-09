@@ -297,3 +297,76 @@ export async function createInvoiceFromTreatment(params: {
  * can each record their own distinct audit-log action name.
  */
 export const createManualInvoice = createInvoiceFromTreatment;
+
+export interface PatientBillingOverview {
+  /** Outstanding balance in cents — the authoritative `Patient.balanceCents`. */
+  amountDueCents: number;
+  /** Due date of the earliest unsettled invoice, or null when nothing is owed. */
+  nextDueAt: Date | null;
+  /** Whether any unsettled invoice is already past its due date. */
+  hasOverdue: boolean;
+  insurance: {
+    provider: string | null;
+    plan: string | null;
+    /** Annual maximum in cents, or null when the plan's cap isn't on file. */
+    annualMaxCents: number | null;
+    /** Insurance-covered amount on invoices issued this calendar year. */
+    usedCents: number;
+    /** `annualMaxCents - usedCents`, floored at 0. Null when there's no cap on file. */
+    remainingCents: number | null;
+    /** 0-100, rounded. Null when there's no cap to measure against. */
+    usedPct: number | null;
+  };
+}
+
+/**
+ * Everything the Patient portal's Bills page needs above its invoice list.
+ *
+ * Insurance usage is summed from this year's invoices rather than stored on
+ * the patient, so it can't drift out of step with the invoices it's derived
+ * from. `Patient.insuranceAnnualMaxCents` is the only stored half, and when
+ * it's absent the caller still gets `usedCents` — just no cap, remainder or
+ * percentage to render a progress bar from.
+ */
+export async function patientBillingOverview(
+  organizationId: string,
+  patientId: string,
+): Promise<PatientBillingOverview | null> {
+  const patient = await prisma.patient.findFirst({ where: { id: patientId, organizationId } });
+  if (!patient) return null;
+
+  const yearStart = new Date(new Date().getFullYear(), 0, 1);
+
+  const [unsettled, coveredThisYear] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { organizationId, patientId, status: { in: ["PENDING", "OVERDUE"] } },
+      orderBy: { dueAt: "asc" },
+      select: { dueAt: true, status: true },
+    }),
+    prisma.invoice.aggregate({
+      where: { organizationId, patientId, issuedAt: { gte: yearStart } },
+      _sum: { insuranceAdjustmentCents: true },
+    }),
+  ]);
+
+  const annualMaxCents = patient.insuranceAnnualMaxCents;
+  const usedCents = coveredThisYear._sum.insuranceAdjustmentCents ?? 0;
+  const now = new Date();
+
+  return {
+    amountDueCents: patient.balanceCents,
+    nextDueAt: unsettled[0]?.dueAt ?? null,
+    hasOverdue: unsettled.some((i) => i.status === "OVERDUE" || i.dueAt < now),
+    insurance: {
+      provider: patient.insuranceProvider,
+      plan: patient.insurancePlan,
+      annualMaxCents,
+      usedCents,
+      remainingCents: annualMaxCents == null ? null : Math.max(0, annualMaxCents - usedCents),
+      usedPct:
+        annualMaxCents == null || annualMaxCents === 0
+          ? null
+          : Math.min(100, Math.round((usedCents / annualMaxCents) * 100)),
+    },
+  };
+}

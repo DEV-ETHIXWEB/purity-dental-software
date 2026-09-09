@@ -8,7 +8,7 @@ import { CashflowRangeSelect, type CashflowRange } from "@/components/dentist/Ca
 import { CollectionRateRing } from "@/components/dentist/CollectionRateRing";
 import { OutstandingByAgeChart } from "@/components/dentist/OutstandingByAgeChart";
 import { RecentTransactionsList } from "@/components/dentist/RecentTransactionsList";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { billingSummary, cashflowTrend, outstandingByAge, listInvoices } from "@/lib/data/billing";
 import { formatCentsAsCurrency } from "@/lib/billing-format";
 
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BillingDashboardPage({ searchParams }: PageProps<"/billing">) {
-  const session = await requireRole(["DENTIST", "ADMIN"]);
+  const session = await requirePageRole(["DENTIST", "ADMIN"]);
   const { organizationId } = session.user;
   const { range: rangeParam } = await searchParams;
   const range: CashflowRange = rangeParam === "last12Months" ? "last12Months" : "thisYear";
@@ -104,7 +104,7 @@ export default async function BillingDashboardPage({ searchParams }: PageProps<"
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Outstanding by Age</CardTitle>

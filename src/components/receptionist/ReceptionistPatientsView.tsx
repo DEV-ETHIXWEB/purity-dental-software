@@ -16,7 +16,7 @@ export function ReceptionistPatientsView({
         <div>
           <h1 className="text-2xl font-semibold text-text-primary">Patients</h1>
           <p className="text-sm text-text-secondary">
-            {patients.length} patients in the practice.
+            {patients.length} {patients.length === 1 ? "patient" : "patients"} in the practice.
           </p>
         </div>
         <Link
