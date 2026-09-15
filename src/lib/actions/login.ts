@@ -40,6 +40,11 @@ export async function login(formData: FormData): Promise<LoginResult> {
     password: String(formData.get("password") ?? ""),
   };
 
+  // Not part of the credential schema — it carries no security meaning and
+  // an absent/garbage value simply means "don't remember" rather than
+  // failing the sign-in.
+  const remember = formData.get("remember") === "on";
+
   const parsed = loginSchema.safeParse(raw);
   if (!parsed.success) {
     return {
@@ -78,7 +83,7 @@ export async function login(formData: FormData): Promise<LoginResult> {
       return { status: "error", message: GENERIC_FAILURE };
     }
 
-    await createSession(user.id);
+    await createSession(user.id, { remember });
 
     await writeAuditLog({
       organizationId: user.organizationId,

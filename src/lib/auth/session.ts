@@ -17,6 +17,8 @@ import type { UserRole } from "@/generated/prisma/client";
 
 export const SESSION_COOKIE_NAME = "purity_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+/** Lifetime when the user did NOT tick "Remember me" on the sign-in form. */
+const SESSION_SHORT_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
 
 /** Shape returned to callers — deliberately excludes passwordHash and other sensitive columns. */
 export interface SessionUser {
@@ -41,13 +43,25 @@ export interface CurrentSession {
  * response. Call this only after password verification has already
  * succeeded (see `src/lib/auth/login.ts`).
  *
+ * `remember` is the sign-in form's "Remember me" box. Ticked (the default,
+ * and the behaviour every existing caller had before the flag existed): a
+ * 7-day session with a persistent cookie. Unticked: a 12-hour session whose
+ * cookie omits `expires`, making it a browser-session cookie that dies when
+ * the window closes — the point of the control is that a shared
+ * front-desk machine doesn't stay signed in overnight.
+ *
  * NOTE: this performs a real Prisma write and will only succeed once a live
  * database is connected — that's expected in this phase of the project.
  */
-export async function createSession(userId: string): Promise<void> {
+export async function createSession(
+  userId: string,
+  { remember = true }: { remember?: boolean } = {},
+): Promise<void> {
   const rawToken = generateToken();
   const tokenHash = hashToken(rawToken);
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+  const expiresAt = new Date(
+    Date.now() + (remember ? SESSION_TTL_MS : SESSION_SHORT_TTL_MS),
+  );
 
   await prisma.session.create({
     data: { userId, tokenHash, expiresAt },
@@ -59,7 +73,9 @@ export async function createSession(userId: string): Promise<void> {
     secure: isProduction(),
     sameSite: "lax",
     path: "/",
-    expires: expiresAt,
+    // Server-side expiry still applies either way; this only decides whether
+    // the cookie survives a browser restart.
+    ...(remember ? { expires: expiresAt } : {}),
   });
 }
 
