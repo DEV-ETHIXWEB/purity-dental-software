@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { listInvoices } from "@/lib/data/billing";
 import { listPatients } from "@/lib/data/patients";
 import { InvoicesListPanel } from "@/components/dentist/InvoicesListPanel";
@@ -17,7 +17,7 @@ export const metadata = {
  * reference without any client-side "selected id" state.
  */
 export default async function InvoicesLayout({ children }: { children: ReactNode }) {
-  const session = await requireRole(["DENTIST", "ADMIN"]);
+  const session = await requirePageRole(["DENTIST", "ADMIN"]);
   const [invoices, patients] = await Promise.all([
     listInvoices(session.user.organizationId),
     listPatients(session.user.organizationId),

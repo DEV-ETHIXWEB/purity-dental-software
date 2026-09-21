@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { MessagesView } from "@/components/hygienist/MessagesView";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { listConversations } from "@/lib/data/messaging";
 
 export const metadata: Metadata = {
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HygienistMessagesPage() {
-  const session = await requireRole(["HYGIENIST", "ADMIN"]);
+  const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
   const conversations = await listConversations(session.user.organizationId);
 
   return (

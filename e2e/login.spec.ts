@@ -11,7 +11,7 @@ import { test, expect } from "@playwright/test";
 test.describe("/login page", () => {
   test("renders the sign-in form with a heading and both fields", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByRole("heading", { name: "Sign in to Purity" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
     await expect(page.getByLabel("Email")).toBeVisible();
     await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
@@ -64,6 +64,14 @@ test.describe("/login page", () => {
     await page.keyboard.press("Tab");
     await expect(page.getByRole("button", { name: "Show password" })).toBeFocused();
 
+    // Then the two controls that sit between the password and the CTA in
+    // the redesigned form: "Remember me" and the forgot-password link.
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("checkbox", { name: "Remember me" })).toBeFocused();
+
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("link", { name: "Forgot your password?" })).toBeFocused();
+
     await page.keyboard.press("Tab");
     await expect(page.getByRole("button", { name: "Sign in" })).toBeFocused();
   });
@@ -78,5 +86,24 @@ test.describe("/login page", () => {
     await expect(emailInput).toHaveCount(1);
     await expect(passwordInput).toHaveCount(1);
     await expect(passwordInput).toHaveAttribute("type", "password");
+  });
+
+  test("the Remember me box starts checked and toggles", async ({ page }) => {
+    await page.goto("/login");
+    const remember = page.getByRole("checkbox", { name: "Remember me" });
+    await expect(remember).toHaveAttribute("aria-checked", "true");
+    await remember.click();
+    await expect(remember).toHaveAttribute("aria-checked", "false");
+  });
+
+  test("the brand showcase rotates between its three slides", async ({ page }) => {
+    await page.goto("/login");
+    const dots = page.getByRole("button", { name: /^Show slide / });
+    await expect(dots).toHaveCount(3);
+
+    // Jump straight to the third slide rather than waiting out the timer.
+    await dots.nth(2).click();
+    await expect(dots.nth(2)).toHaveAttribute("aria-current", "true");
+    await expect(dots.nth(0)).not.toHaveAttribute("aria-current", "true");
   });
 });

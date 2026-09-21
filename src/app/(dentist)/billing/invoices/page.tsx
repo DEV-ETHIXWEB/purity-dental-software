@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { listInvoices } from "@/lib/data/billing";
 
 /**
@@ -9,7 +9,7 @@ import { listInvoices } from "@/lib/data/billing";
  * to an empty state only when the org has no invoices at all.
  */
 export default async function InvoicesIndexPage() {
-  const session = await requireRole(["DENTIST", "ADMIN"]);
+  const session = await requirePageRole(["DENTIST", "ADMIN"]);
   const invoices = await listInvoices(session.user.organizationId);
 
   if (invoices.length > 0) {

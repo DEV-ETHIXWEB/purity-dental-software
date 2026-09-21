@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ScheduleBoard } from "@/components/dentist/ScheduleBoard";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { todaysAppointmentsForProvider, appointmentsForProvider } from "@/lib/data/appointments";
 import { listWaitlistEntries } from "@/lib/data/waitlist";
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SchedulePage() {
-  const session = await requireRole(["DENTIST", "ADMIN"]);
+  const session = await requirePageRole(["DENTIST", "ADMIN"]);
   const { organizationId, id: providerId } = session.user;
   const today = new Date();
 
@@ -29,7 +29,7 @@ export default async function SchedulePage() {
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">My Schedule</h1>
         <p className="text-sm text-text-secondary">
-          {todaysAppointments.length} appointments today.
+          {todaysAppointments.length} {todaysAppointments.length === 1 ? "appointment" : "appointments"} today.
         </p>
       </div>
 

@@ -5,7 +5,7 @@ import { TodaysVisitsCard } from "@/components/dentist/TodaysVisitsCard";
 import { RecentConsultationCard } from "@/components/dentist/RecentConsultationCard";
 import { FollowUpsCard } from "@/components/dentist/FollowUpsCard";
 import { UpcomingCard } from "@/components/dentist/UpcomingCard";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import {
   appointmentsForProvider,
   weeklyVisitCounts,
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const session = await requireRole(["DENTIST", "ADMIN"]);
+  const session = await requirePageRole(["DENTIST", "ADMIN"]);
   const { organizationId, id: providerId, name } = session.user;
 
   const [visitBreakdown, weekly, allAppointments, followUps] = await Promise.all([
@@ -54,7 +54,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
         {recentConsultation ? (
           <RecentConsultationCard
             patient={recentConsultation.patient}

@@ -15,7 +15,7 @@ import {
   TableHeaderCell,
   TableCell,
 } from "@/components/ui/Table";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { getInvoiceById } from "@/lib/data/billing";
 import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
 import { patientFullName, patientAge } from "@/lib/patient-format";
@@ -23,7 +23,7 @@ import { patientFullName, patientAge } from "@/lib/patient-format";
 export async function generateMetadata({
   params,
 }: PageProps<"/billing/invoices/[invoiceId]">): Promise<Metadata> {
-  const session = await requireRole(["DENTIST", "ADMIN"]);
+  const session = await requirePageRole(["DENTIST", "ADMIN"]);
   const { invoiceId } = await params;
   const invoice = await getInvoiceById(session.user.organizationId, invoiceId);
   return {
@@ -35,7 +35,7 @@ export async function generateMetadata({
 export default async function InvoiceDetailPage({
   params,
 }: PageProps<"/billing/invoices/[invoiceId]">) {
-  const session = await requireRole(["DENTIST", "ADMIN"]);
+  const session = await requirePageRole(["DENTIST", "ADMIN"]);
   const { invoiceId } = await params;
   const invoice = await getInvoiceById(session.user.organizationId, invoiceId);
   if (!invoice) notFound();

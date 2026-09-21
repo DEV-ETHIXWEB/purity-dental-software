@@ -55,12 +55,12 @@ export function FollowUpsCard({ patients }: FollowUpsCardProps) {
             <div
               key={patient.id}
               className={cn(
-                "group/row animate-rise-in -mx-2 flex min-w-0 items-center justify-between gap-3 rounded-[var(--radius-md)] px-2 py-1.5",
+                "group/row animate-rise-in -mx-2 flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-[var(--radius-md)] px-2 py-1.5",
                 "transition-colors duration-200 ease-out hover:bg-surface-muted",
                 STAGGER[i] ?? "stagger-5",
               )}
             >
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 flex-1 basis-36 items-center gap-3">
                 <Avatar
                   name={name}
                   src={patient.photoUrl}

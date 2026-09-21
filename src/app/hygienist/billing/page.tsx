@@ -8,7 +8,7 @@ import { CashflowTrendChart } from "@/components/dentist/CashflowTrendChart";
 import { CollectionRateRing } from "@/components/dentist/CollectionRateRing";
 import { OutstandingByAgeChart } from "@/components/dentist/OutstandingByAgeChart";
 import { RecentTransactionsList } from "@/components/dentist/RecentTransactionsList";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { billingSummary, cashflowTrend, outstandingByAge, listInvoices } from "@/lib/data/billing";
 import { formatCentsAsCurrency } from "@/lib/billing-format";
 
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HygienistBillingDashboardPage() {
-  const session = await requireRole(["HYGIENIST", "ADMIN"]);
+  const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
   const { organizationId } = session.user;
 
   const [summary, trend, byAge, invoices] = await Promise.all([

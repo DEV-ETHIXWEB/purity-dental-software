@@ -27,6 +27,8 @@ const TONE_TEXT: Record<NonNullable<StatStripItem["tone"]>, string> = {
   error: "text-error-text",
 };
 
+const STAGGER = ["stagger-0", "stagger-1", "stagger-2", "stagger-3", "stagger-4", "stagger-5", "stagger-6", "stagger-7"];
+
 /** Static class lookup — Tailwind needs literal class names, not `grid-cols-${n}`. */
 const SM_COLS: Record<number, string> = {
   1: "sm:grid-cols-1",
@@ -60,12 +62,23 @@ export function StatStrip({ items, className, variant = "inline" }: StatStripPro
         className,
       )}
     >
-      {items.map((item) =>
+      {items.map((item, i) =>
         variant === "badge" ? (
-          <div key={item.label} className="flex items-center gap-2.5 px-4 py-4 sm:gap-3 sm:px-5">
+          <div
+            key={item.label}
+            className={cn(
+              "animate-rise-in flex items-center gap-2.5 px-4 py-4 sm:gap-3 sm:px-5",
+              "transition-colors duration-200 ease-out hover:bg-surface-muted",
+              STAGGER[i] ?? "stagger-7",
+            )}
+          >
             {item.icon && <IconBadge icon={item.icon} tone={item.iconTone ?? "blue"} />}
             <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="truncate text-xs font-medium text-text-secondary">{item.label}</span>
+              {/* Wraps rather than truncates: in the 2-up phone grid these
+                  labels ("Outstanding Balance", "Collected This Month") were
+                  clipping to "Outstanding…". Two lines is the ceiling, and
+                  every card in the row shares a grid track height anyway. */}
+              <span className="line-clamp-2 text-xs font-medium text-text-secondary">{item.label}</span>
               <p
                 className={cn(
                   // Steps down below `sm` so a full currency figure
@@ -86,10 +99,17 @@ export function StatStrip({ items, className, variant = "inline" }: StatStripPro
             </div>
           </div>
         ) : (
-          <div key={item.label} className="flex flex-col gap-1.5 px-4 py-4 sm:px-5">
+          <div
+            key={item.label}
+            className={cn(
+              "animate-rise-in flex flex-col gap-1.5 px-4 py-4 sm:px-5",
+              "transition-colors duration-200 ease-out hover:bg-surface-muted",
+              STAGGER[i] ?? "stagger-7",
+            )}
+          >
             <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
               {item.icon && <item.icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
-              <span className="truncate">{item.label}</span>
+              <span className="line-clamp-2">{item.label}</span>
             </div>
             <p
               className={cn(

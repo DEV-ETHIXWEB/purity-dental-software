@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { ClockSlotIconFilled } from "@/components/ui/icons/purity-icons";
 import { AppointmentListItem } from "@/components/dentist/AppointmentListItem";
@@ -24,7 +25,7 @@ export function TodaysScheduleCard({ appointments, completed, basePath = "", sch
   const total = appointments.length;
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="animate-rise-in stagger-1 flex h-full flex-col transition-shadow duration-300 ease-out hover:shadow-card-hover">
       <CardHeader className="items-start">
         <div>
           <CardTitle>Today&apos;s Schedule</CardTitle>
@@ -34,9 +35,13 @@ export function TodaysScheduleCard({ appointments, completed, basePath = "", sch
         </div>
         <Link
           href={scheduleHref}
-          className="text-sm font-medium text-[var(--color-brand-blue-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
+          className="group/open inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-brand-blue-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
         >
           Open schedule
+          <ArrowRight
+            className="h-3.5 w-3.5 transition-transform duration-200 ease-out group-hover/open:translate-x-1 motion-reduce:group-hover/open:translate-x-0"
+            aria-hidden="true"
+          />
         </Link>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">

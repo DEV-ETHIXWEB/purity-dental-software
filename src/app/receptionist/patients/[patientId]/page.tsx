@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { getPatientById } from "@/lib/data/patients";
 import { patientFullName } from "@/lib/patient-format";
 import { appointmentsForPatient } from "@/lib/data/appointments";
@@ -10,7 +10,7 @@ import { ReceptionistPatientProfileView } from "@/components/receptionist/Recept
 export async function generateMetadata({
   params,
 }: PageProps<"/receptionist/patients/[patientId]">): Promise<Metadata> {
-  const session = await requireRole(["RECEPTIONIST", "ADMIN"]);
+  const session = await requirePageRole(["RECEPTIONIST", "ADMIN"]);
   const { patientId } = await params;
   const patient = await getPatientById(session.user.organizationId, patientId);
   return {
@@ -24,7 +24,7 @@ export async function generateMetadata({
 export default async function ReceptionistPatientProfilePage({
   params,
 }: PageProps<"/receptionist/patients/[patientId]">) {
-  const session = await requireRole(["RECEPTIONIST", "ADMIN"]);
+  const session = await requirePageRole(["RECEPTIONIST", "ADMIN"]);
   const { patientId } = await params;
   const patient = await getPatientById(session.user.organizationId, patientId);
   if (!patient) notFound();

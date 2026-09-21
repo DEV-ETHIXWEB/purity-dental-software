@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ProfileSettingsCard } from "@/components/shell/ProfileSettingsCard";
 import { NotificationPreferencesCard } from "@/components/shell/NotificationPreferencesCard";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 };
 
 export default async function ReceptionistSettingsPage() {
-  const session = await requireRole(["RECEPTIONIST", "ADMIN"]);
-  const { name, email, phone } = session.user;
+  const session = await requirePageRole(["RECEPTIONIST", "ADMIN"]);
+  const { name, email, phone, avatarUrl } = session.user;
 
   return (
     <div className="flex flex-col gap-6">
@@ -19,7 +19,7 @@ export default async function ReceptionistSettingsPage() {
         <p className="text-sm text-text-secondary">Manage your profile and preferences.</p>
       </div>
 
-      <ProfileSettingsCard name={name} email={email} phone={phone ?? ""} roleLabel="Receptionist / Front Desk" />
+      <ProfileSettingsCard name={name} email={email} phone={phone ?? ""} roleLabel="Receptionist / Front Desk" photoUrl={avatarUrl} />
 
       <NotificationPreferencesCard
         items={[

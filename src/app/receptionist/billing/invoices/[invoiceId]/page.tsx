@@ -14,7 +14,7 @@ import {
   TableHeaderCell,
   TableCell,
 } from "@/components/ui/Table";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { getInvoiceById } from "@/lib/data/billing";
 import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
 import { patientFullName } from "@/lib/patient-format";
@@ -22,7 +22,7 @@ import { patientFullName } from "@/lib/patient-format";
 export async function generateMetadata({
   params,
 }: PageProps<"/receptionist/billing/invoices/[invoiceId]">): Promise<Metadata> {
-  const session = await requireRole(["RECEPTIONIST", "ADMIN"]);
+  const session = await requirePageRole(["RECEPTIONIST", "ADMIN"]);
   const { invoiceId } = await params;
   const invoice = await getInvoiceById(session.user.organizationId, invoiceId);
   return {
@@ -34,7 +34,7 @@ export async function generateMetadata({
 export default async function ReceptionistInvoiceDetailPage({
   params,
 }: PageProps<"/receptionist/billing/invoices/[invoiceId]">) {
-  const session = await requireRole(["RECEPTIONIST", "ADMIN"]);
+  const session = await requirePageRole(["RECEPTIONIST", "ADMIN"]);
   const { invoiceId } = await params;
   const invoice = await getInvoiceById(session.user.organizationId, invoiceId);
   if (!invoice) notFound();

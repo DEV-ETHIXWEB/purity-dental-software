@@ -60,6 +60,7 @@ const PATIENTS = [
     email: "sarah.johnson@example.com",
     insuranceProvider: "Delta Dental",
     insurancePlan: "PPO Plus",
+    insuranceAnnualMaxCents: 200000,
     medicalAlerts: ["Penicillin allergy", "Sensitive gums"],
     lastCleaningAt: "2026-05-14",
     recallStatus: "Due in 2 weeks",
@@ -76,6 +77,7 @@ const PATIENTS = [
     email: "james.carter@example.com",
     insuranceProvider: "Cigna",
     insurancePlan: "Dental Care 500",
+    insuranceAnnualMaxCents: 150000,
     medicalAlerts: [],
     lastCleaningAt: "2026-07-02",
     recallStatus: "On track",
@@ -92,6 +94,7 @@ const PATIENTS = [
     email: "olivia.martinez@example.com",
     insuranceProvider: "MetLife",
     insurancePlan: "Essential",
+    insuranceAnnualMaxCents: 100000,
     medicalAlerts: ["Latex allergy"],
     lastCleaningAt: "2026-03-21",
     recallStatus: "Overdue",
@@ -108,6 +111,7 @@ const PATIENTS = [
     email: "ethan.walker@example.com",
     insuranceProvider: "Aetna",
     insurancePlan: "PPO",
+    insuranceAnnualMaxCents: 175000,
     medicalAlerts: ["Diabetic"],
     lastCleaningAt: "2026-01-09",
     recallStatus: "Overdue",
@@ -124,6 +128,7 @@ const PATIENTS = [
     email: "michael.lee@example.com",
     insuranceProvider: "Guardian",
     insurancePlan: "Signature",
+    insuranceAnnualMaxCents: 250000,
     medicalAlerts: [],
     lastCleaningAt: "2026-06-18",
     recallStatus: "On track",
@@ -140,6 +145,7 @@ const PATIENTS = [
     email: "emma.williams@example.com",
     insuranceProvider: "Delta Dental",
     insurancePlan: "PPO Plus",
+    insuranceAnnualMaxCents: 200000,
     medicalAlerts: ["Sensitive gums"],
     lastCleaningAt: "2026-04-30",
     recallStatus: "Due in 3 weeks",
@@ -156,6 +162,7 @@ const PATIENTS = [
     email: "daniel.brooks@example.com",
     insuranceProvider: "Cigna",
     insurancePlan: "Dental Care 500",
+    insuranceAnnualMaxCents: 150000,
     medicalAlerts: [],
     lastCleaningAt: "2025-12-11",
     recallStatus: "Overdue",
@@ -173,6 +180,7 @@ const PATIENTS = [
     email: "ava.nguyen@example.com",
     insuranceProvider: "MetLife",
     insurancePlan: "Essential",
+    insuranceAnnualMaxCents: 100000,
     medicalAlerts: ["Penicillin allergy"],
     lastCleaningAt: "2026-07-25",
     recallStatus: "On track",
@@ -393,9 +401,16 @@ async function main() {
   }
 
   for (const p of PATIENTS) {
+    // Same reasoning as the appointment/invoice upserts below: `update`
+    // only backfills columns that didn't exist before their feature
+    // (photoUrl, the plan's annual maximum) — never fields a live QA
+    // session may have legitimately changed since the last seed run.
     await prisma.patient.upsert({
       where: { id: p.id },
-      update: { photoUrl: p.photoUrl },
+      update: {
+        photoUrl: p.photoUrl,
+        insuranceAnnualMaxCents: p.insuranceAnnualMaxCents,
+      },
       create: {
         id: p.id,
         organizationId: organization.id,
@@ -409,6 +424,7 @@ async function main() {
         photoUrl: p.photoUrl,
         insuranceProvider: p.insuranceProvider,
         insurancePlan: p.insurancePlan,
+        insuranceAnnualMaxCents: p.insuranceAnnualMaxCents,
         status: "status" in p ? p.status : "ACTIVE",
         balanceCents: OUTSTANDING_CENTS_BY_PATIENT.get(p.id) ?? 0,
         medicalAlerts: p.medicalAlerts,

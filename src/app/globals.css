@@ -368,6 +368,40 @@ body {
   }
 }
 
+/* Individual crowns in the patient "teeth at a glance" arch. Hovering one
+   lifts it off the arch slightly so it can be picked out and its tooltip
+   read. `transform-box: fill-box` keeps the origin on the crown itself
+   rather than the SVG viewport, and the transform lives on the <path> —
+   the wrapping <g> already carries a transform attribute placing it on the
+   arch, which a CSS transform would overwrite. */
+.tooth path {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), filter 200ms ease-out;
+}
+.tooth:hover path {
+  transform: scale(1.14);
+  filter: drop-shadow(0 1px 2px rgb(16 24 40 / 0.22));
+}
+@media (prefers-reduced-motion: reduce) {
+  .tooth path,
+  .tooth:hover path {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* Swipeable overflow without a visible scrollbar — used by the tab strips,
+   which scroll horizontally on a phone but shouldn't show a chunky native
+   bar underneath them. */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /*
  * CTA gradient sweep. The brand fill slides across on hover instead of just
  * dimming, which is what `hover:opacity-90` used to do on these buttons.
@@ -449,5 +483,326 @@ body {
   .stagger-0, .stagger-1, .stagger-2, .stagger-3, .stagger-4, .stagger-5,
   .stagger-6, .stagger-7, .stagger-8, .stagger-9, .stagger-10, .stagger-11 {
     animation-delay: 0ms;
+  }
+}
+
+/*
+ * Patient first-run intro carousel (src/components/patient/PatientOnboarding.tsx).
+ *
+ * The slide track is moved by a fixed-offset class per index rather than an
+ * inline `transform`, for exactly the same CSP reason as `.nav-pos-*`
+ * above: `style-src` carries a nonce and no `unsafe-inline`, so a computed
+ * inline style is silently dropped in production. Four slides, so four
+ * offsets — keep this in step with `SLIDES` in that component.
+ *
+ * Only `transform` animates (compositor-friendly, no layout or paint), and
+ * the whole thing collapses to an instant cut under reduced motion.
+ */
+.onboarding-track {
+  transition: transform 460ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.onboarding-pos-0 { transform: translateX(0); }
+.onboarding-pos-1 { transform: translateX(-100%); }
+.onboarding-pos-2 { transform: translateX(-200%); }
+.onboarding-pos-3 { transform: translateX(-300%); }
+
+/* Progress dots: the active one stretches into a pill rather than just
+   changing colour, so the step is readable without relying on hue. */
+.onboarding-dot {
+  transition:
+    width 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 300ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-track,
+  .onboarding-dot {
+    transition: none;
+  }
+}
+
+/* The onboarding artwork is a photo-style PNG carrying its own pale-blue
+   background, so dropped straight onto the screen it reads as a pasted
+   rectangle. Bleeding it to the full screen width kills the side edges;
+   this mask dissolves the remaining top and bottom ones into the page.
+   Declared here rather than inline for the CSP reason noted above. */
+.onboarding-art-fade {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 15%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 15%, #000 86%, transparent 100%);
+}
+
+/*
+ * Mobile bottom tab bar active state (src/components/shell/BottomNav.tsx).
+ *
+ * The active tab's icon sits in a tinted disc with a soft brand-coloured
+ * halo around it. Two layered shadows rather than one: a tight ring that
+ * reads as a defined edge, and a wider, softer bloom that gives it the
+ * glow. Both are `box-shadow`, so nothing here affects layout.
+ */
+.bottomnav-glow {
+  box-shadow:
+    0 0 0 4px rgb(0 145 252 / 0.10),
+    0 4px 14px 0 rgb(0 145 252 / 0.30);
+}
+
+/* Scale + opacity only, so the disc blooms out from the icon's centre
+   instead of sliding in from a neighbouring tab. */
+.bottomnav-disc {
+  transition:
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 240ms ease-out,
+    box-shadow 320ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottomnav-disc {
+    transition: none;
+  }
+}
+
+/*
+ * Progress meter fill (Bills page insurance coverage bar).
+ *
+ * The width is a class per 5% step rather than an inline `style` — the CSP
+ * carries a style nonce with no `unsafe-inline`, so a computed inline width
+ * is silently dropped in production (same reason as `.nav-pos-*`). 5% is
+ * fine-grained enough that the rounding is invisible at bar widths, and 21
+ * classes is a lot cheaper than 101.
+ */
+.meter-fill {
+  background-image: linear-gradient(90deg, var(--color-brand-teal), var(--color-brand-blue));
+  transition: width 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.meter-fill-0 { width: 0%; }
+.meter-fill-5 { width: 5%; }
+.meter-fill-10 { width: 10%; }
+.meter-fill-15 { width: 15%; }
+.meter-fill-20 { width: 20%; }
+.meter-fill-25 { width: 25%; }
+.meter-fill-30 { width: 30%; }
+.meter-fill-35 { width: 35%; }
+.meter-fill-40 { width: 40%; }
+.meter-fill-45 { width: 45%; }
+.meter-fill-50 { width: 50%; }
+.meter-fill-55 { width: 55%; }
+.meter-fill-60 { width: 60%; }
+.meter-fill-65 { width: 65%; }
+.meter-fill-70 { width: 70%; }
+.meter-fill-75 { width: 75%; }
+.meter-fill-80 { width: 80%; }
+.meter-fill-85 { width: 85%; }
+.meter-fill-90 { width: 90%; }
+.meter-fill-95 { width: 95%; }
+.meter-fill-100 { width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .meter-fill {
+    transition: none;
+  }
+}
+
+/*
+ * ===========================================================================
+ * Auth split-screen — /login, /forgot-password, /reset-password
+ * ===========================================================================
+ *
+ * Everything below is named classes only, for the same CSP reason documented
+ * on `.legend-swatch-dashed` above: `style-src` carries a nonce with no
+ * `unsafe-inline`, so a computed inline `style=` (the usual way to stagger a
+ * carousel delay or place a decorative blob) is silently dropped in
+ * production. Animation is confined to `opacity` and `transform` so the
+ * hero's ambient motion stays on the compositor and never costs layout.
+ */
+
+/* The brand panel's ground: a light-to-deep blue diagonal with a soft
+   highlight bloom in the upper right, matching the reference comps. */
+.auth-hero-bg {
+  background-image:
+    radial-gradient(70% 55% at 80% 4%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 62%),
+    radial-gradient(60% 50% at 8% 96%, rgba(0, 76, 168, 0.35), rgba(0, 76, 168, 0) 60%),
+    linear-gradient(162deg, #3ba7ff 0%, #1b8bfa 44%, #0a6fe0 100%);
+}
+
+/* Ambient drift for the decorative circles and confetti pills. A single
+   keyframe pair driven at different durations/offsets reads as organic
+   without needing a class per shape. `alternate` on a one-way keyframe
+   halves the keyframe count and keeps the easing symmetric. */
+@keyframes purity-drift {
+  from { transform: translate3d(0, -9px, 0); }
+  to { transform: translate3d(0, 9px, 0); }
+}
+.auth-drift {
+  animation: purity-drift 7s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.auth-drift-slow { animation-duration: 11s; }
+.auth-drift-fast { animation-duration: 5s; }
+/* Negative delays start each shape mid-cycle, so they never move in lockstep. */
+.auth-offset-1 { animation-delay: -1.4s; }
+.auth-offset-2 { animation-delay: -3.1s; }
+.auth-offset-3 { animation-delay: -4.6s; }
+.auth-offset-4 { animation-delay: -6.2s; }
+
+/* Carousel slide. All three are stacked in the same grid cell; only the
+   active one is opaque and hit-testable.
+
+   The two states carry DIFFERENT transitions on purpose, so the change is a
+   hand-off rather than a true crossfade: the outgoing slide clears out in
+   ~240ms, and the incoming one only starts fading in once it has. A
+   symmetric crossfade briefly renders both headlines at half opacity on top
+   of each other, which reads as a rendering fault rather than a transition.
+   Opacity lives on the slide alone — the art and copy move but never fade
+   independently, so nothing double-fades. */
+.auth-slide {
+  grid-area: 1 / 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition:
+    opacity 240ms ease-in,
+    transform 240ms ease-in;
+}
+.auth-slide-active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+  transition:
+    opacity 480ms ease-out 240ms,
+    transform 620ms cubic-bezier(0.16, 1, 0.3, 1) 240ms;
+}
+/* The illustration carries a little more travel than its caption, so the
+   art settles into place a beat after the text. */
+.auth-slide-art {
+  transform: translateY(20px) scale(0.97);
+  transition: transform 300ms ease-in;
+}
+.auth-slide-active .auth-slide-art {
+  transform: none;
+  transition: transform 760ms cubic-bezier(0.16, 1, 0.3, 1) 240ms;
+}
+.auth-slide-copy {
+  transform: translateY(10px);
+  transition: transform 300ms ease-in;
+}
+.auth-slide-active .auth-slide-copy {
+  transform: none;
+  transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1) 320ms;
+}
+
+/* Slide 3's dental mirror is drawn running off the left edge of its source
+   render, so the handle ends on a hard vertical cut. Centred in the panel
+   that cut floats in open blue and reads as a broken image (the comp hides
+   it by bleeding the art off the panel edge). Masking the outer 6.5% turns
+   the cut into a fade, so the mirror recedes instead of stopping — the
+   nearest content, the "Treatment Completed" card, starts at ~7.4% and is
+   left untouched. */
+.auth-art-fade-left {
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.55) 4%, #000 6.5%);
+  mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.55) 4%, #000 6.5%);
+}
+
+/* Pagination dots — the active one stretches into a pill rather than just
+   brightening, so the position is readable at a glance. */
+.auth-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background-color: rgb(255 255 255 / 0.45);
+  transition:
+    width 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 300ms ease;
+}
+.auth-dot-active {
+  width: 30px;
+  background-color: #ffffff;
+}
+.auth-dot-btn:hover .auth-dot {
+  background-color: rgb(255 255 255 / 0.75);
+}
+
+/* Right panel photograph fade-in (the asset's own alpha handles the blend
+   into the white surface; this only eases it onto the page). */
+.auth-photo-in {
+  animation: purity-fade-in 1100ms ease-out both;
+}
+
+/* Form fields. The focus ring is a box-shadow rather than the global
+   `:focus-visible` outline so it can hug the field's 10px radius and share
+   a transition with the border — the indicator is still always visible on
+   focus, which is what WCAG 2.4.7 actually asks for. */
+.auth-input {
+  transition:
+    border-color 200ms ease,
+    box-shadow 220ms ease,
+    background-color 200ms ease;
+}
+.auth-input:hover:not(:focus) {
+  border-color: var(--color-border-strong);
+}
+.auth-input:focus,
+.auth-input:focus-visible {
+  outline: none;
+  border-color: var(--color-brand-blue);
+  box-shadow: 0 0 0 4px rgb(0 145 252 / 0.14);
+}
+.auth-field-icon {
+  transition: color 200ms ease, transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.auth-field:focus-within .auth-field-icon {
+  color: var(--color-brand-blue);
+}
+
+/* Remember-me box. Gradient fill on check, with a short depress on press so
+   the control feels physical. */
+.auth-check {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.auth-check-on {
+  border-color: transparent;
+  background-image: linear-gradient(135deg, var(--color-brand-teal), var(--color-brand-blue));
+}
+.auth-check-btn:active .auth-check {
+  transform: scale(0.9);
+}
+
+/* Submit CTA. `.cta-gradient-slide` already supplies the gradient sweep;
+   this adds the lift and the coloured shadow the comps show. */
+.auth-cta {
+  box-shadow: 0 8px 20px -6px rgb(0 145 252 / 0.45);
+}
+.auth-cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -6px rgb(0 145 252 / 0.5);
+}
+.auth-cta:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-drift {
+    animation: none;
+  }
+  .auth-slide,
+  .auth-slide-active,
+  .auth-slide-art,
+  .auth-slide-active .auth-slide-art,
+  .auth-slide-copy,
+  .auth-slide-active .auth-slide-copy,
+  .auth-dot,
+  .auth-input,
+  .auth-field-icon,
+  .auth-check,
+  .auth-cta {
+    transition: none;
+  }
+  .auth-photo-in {
+    animation: none;
+  }
+  .auth-cta:hover:not(:disabled),
+  .auth-check-btn:active .auth-check {
+    transform: none;
   }
 }

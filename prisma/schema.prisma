@@ -98,6 +98,9 @@ model Organization {
   auditLogs        AuditLog[]
   conversations    Conversation[]
   waitlistEntries  WaitlistEntry[]
+  documents        Document[]
+  prescriptions    Prescription[]
+  consentForms     ConsentForm[]
 
   @@map("organizations")
 }
@@ -127,6 +130,13 @@ model User {
   isActive   Boolean   @default(true)
   disabledAt DateTime?
 
+  /// When this account finished the first-run intro carousel. Null means
+  /// "never seen it" — the Patient portal shows the intro on phones until
+  /// it's set (see src/components/patient/PatientOnboarding.tsx). Stored
+  /// per-user rather than in localStorage so it follows the account across
+  /// devices and a cleared browser doesn't replay the intro.
+  onboardedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -144,6 +154,10 @@ model User {
   auditLogs      AuditLog[]
   sessions       Session[]
   passwordResets PasswordResetToken[]
+
+  // Staff who uploaded a document / wrote a prescription.
+  documentsUploaded    Document[]     @relation("DocumentUploader")
+  prescriptionsWritten Prescription[] @relation("PrescriptionPrescriber")
 
   @@index([organizationId])
   @@index([organizationId, role])
@@ -212,6 +226,13 @@ model Patient {
   // source of truth for transactions is the Invoice/InvoiceLineItem tables).
   insuranceProvider String?
   insurancePlan     String?
+  /// Annual benefit maximum for the plan above, in cents. Nullable because
+  /// it isn't known for every plan (and is meaningless for an uninsured
+  /// patient) — the Bills page shows the coverage bar only when it's set,
+  /// and falls back to "covered so far this year" when it isn't. How much
+  /// of it has been used is never stored: it's summed from this year's
+  /// invoice `insuranceAdjustmentCents` so the two can't drift apart.
+  insuranceAnnualMaxCents Int?
   balanceCents      Int      @default(0)
 
   // Clinical snapshot fields shown on dashboard/profile cards.
@@ -232,6 +253,9 @@ model Patient {
   invoices           Invoice[]
   conversation       Conversation?
   waitlistEntries    WaitlistEntry[]
+  documents          Document[]
+  prescriptions      Prescription[]
+  consentForms       ConsentForm[]
 
   @@index([organizationId])
   @@index([organizationId, lastName, firstName])
@@ -489,4 +513,109 @@ model AuditLog {
   @@index([organizationId, resourceType, resourceId])
   @@index([actorUserId])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Clinical documents, prescriptions and consent forms
+// ---------------------------------------------------------------------------
+
+enum DocumentKind {
+  XRAY
+  REPORT
+  REFERRAL
+  OTHER
+}
+
+/// A file attached to a patient record — X-rays, reports, referral letters.
+///
+/// The bytes live in the row rather than object storage: this deployment has
+/// no blob store configured, and a patient document that only exists as a
+/// filename would be a broken feature. `data` is deliberately paired with a
+/// size cap enforced at upload (see `lib/actions/upload-document.ts`) so the
+/// table can't become a dumping ground for full-resolution imaging.
+model Document {
+  id             String       @id @default(cuid())
+  organizationId String
+  patientId      String
+  kind           DocumentKind @default(OTHER)
+  title          String
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  data           Bytes
+  uploadedById   String?
+  uploadedAt     DateTime     @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  uploadedBy   User?        @relation("DocumentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([patientId, uploadedAt])
+  @@map("documents")
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+/// A medication or product prescribed to a patient. Visible to the patient in
+/// their portal, written by clinical staff.
+model Prescription {
+  id             String             @id @default(cuid())
+  organizationId String
+  patientId      String
+  prescriberId   String?
+  medication     String
+  dosage         String
+  instructions   String?
+  quantity       String?
+  status         PrescriptionStatus @default(ACTIVE)
+  prescribedAt   DateTime           @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescriber   User?        @relation("PrescriptionPrescriber", fields: [prescriberId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([patientId, prescribedAt])
+  @@map("prescriptions")
+}
+
+enum ConsentFormStatus {
+  PENDING
+  SIGNED
+}
+
+/// A consent form issued to a patient for signature. `signatureName` is the
+/// typed name the patient entered, stored with the moment they agreed —
+/// enough for a typed-consent record, and deliberately not presented as a
+/// legally binding e-signature.
+model ConsentForm {
+  id             String            @id @default(cuid())
+  organizationId String
+  patientId      String
+  title          String
+  body           String
+  status         ConsentFormStatus @default(PENDING)
+  signatureName  String?
+  signedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([patientId, status])
+  @@map("consent_forms")
 }

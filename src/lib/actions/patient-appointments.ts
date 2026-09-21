@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { requireRole } from "@/lib/auth/authorize";
 import { prisma } from "@/lib/prisma";
 import { createAppointment, hasOverlappingAppointment } from "@/lib/data/appointments";
@@ -93,5 +95,82 @@ export async function cancelPatientAppointment(appointmentId: string): Promise<A
     return { ok: true };
   } catch {
     return { ok: false, error: "Couldn't cancel this appointment. Please try again." };
+  }
+}
+
+/**
+ * Move an existing upcoming appointment to a new slot. Kept separate from
+ * cancel-then-rebook so the row (and its id, notes and history) survives the
+ * change — and so a patient can't lose their slot if the rebook half failed.
+ *
+ * The appointment is re-fetched scoped to the caller's own patient record, so
+ * an id from someone else's booking resolves to nothing.
+ */
+export async function reschedulePatientAppointment(params: {
+  appointmentId: string;
+  startTime: string;
+  endTime: string;
+}): Promise<ActionResult> {
+  try {
+    const session = await requireRole(["PATIENT"]);
+    const patient = await requireOwnPatientRecord(session.user.id);
+
+    const appointment = await prisma.appointment.findFirst({
+      where: {
+        id: params.appointmentId,
+        organizationId: session.user.organizationId,
+        patientId: patient.id,
+      },
+      select: { id: true, providerId: true, status: true, startTime: true },
+    });
+    if (!appointment) return { ok: false, error: "Appointment not found." };
+    if (appointment.status === "CANCELLED" || appointment.status === "COMPLETED") {
+      return { ok: false, error: "That visit can no longer be changed." };
+    }
+
+    const startTime = new Date(params.startTime);
+    const endTime = new Date(params.endTime);
+    if (Number.isNaN(startTime.getTime()) || endTime <= startTime) {
+      return { ok: false, error: "Pick a valid time." };
+    }
+    if (startTime < new Date()) {
+      return { ok: false, error: "Pick a time in the future." };
+    }
+
+    // Exclude this appointment from the clash check, or it collides with itself.
+    const clash = await prisma.appointment.findFirst({
+      where: {
+        organizationId: session.user.organizationId,
+        providerId: appointment.providerId,
+        id: { not: appointment.id },
+        status: { not: "CANCELLED" },
+        startTime: { lt: endTime },
+        endTime: { gt: startTime },
+      },
+      select: { id: true },
+    });
+    if (clash) return { ok: false, error: "That time is no longer available. Please pick another slot." };
+
+    await prisma.appointment.update({
+      where: { id: appointment.id },
+      // Back to SCHEDULED: a previously confirmed visit needs re-confirming
+      // by the practice once the patient moves it.
+      data: { startTime, endTime, status: "SCHEDULED" },
+    });
+
+    await writeAuditLog({
+      organizationId: session.user.organizationId,
+      actorUserId: session.user.id,
+      action: "appointment.rescheduled_by_patient",
+      resourceType: "Appointment",
+      resourceId: appointment.id,
+      metadata: { from: appointment.startTime.toISOString(), to: startTime.toISOString() },
+    });
+
+    revalidatePath("/patient/appointments");
+    revalidatePath("/patient/dashboard");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Couldn't move that appointment. Please try again." };
   }
 }

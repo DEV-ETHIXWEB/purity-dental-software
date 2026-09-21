@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ReceptionistPatientsView } from "@/components/receptionist/ReceptionistPatientsView";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePageRole } from "@/lib/auth/require-portal";
 import { listPatients } from "@/lib/data/patients";
 
 export const metadata: Metadata = {
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default async function ReceptionistPatientsPage({
   searchParams,
 }: PageProps<"/receptionist/patients">) {
-  const session = await requireRole(["RECEPTIONIST", "ADMIN"]);
+  const session = await requirePageRole(["RECEPTIONIST", "ADMIN"]);
   const patients = await listPatients(session.user.organizationId);
   const { q } = await searchParams;
 

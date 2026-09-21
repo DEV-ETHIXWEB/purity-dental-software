@@ -26,6 +26,8 @@ const STATUS_ACCENT: Record<AppointmentStatus, string> = {
   NO_SHOW: "border-l-[var(--color-error)]",
 };
 
+const STAGGER = ["stagger-0", "stagger-1", "stagger-2", "stagger-3", "stagger-4", "stagger-5", "stagger-6", "stagger-7"];
+
 const START_HOUR = 8;
 const END_HOUR = 18;
 
@@ -74,7 +76,15 @@ export function ScheduleDayView({
           const slotAppointments = bookedByHour.get(hour) ?? [];
           const isNow = isToday && hour === currentHour;
           return (
-            <li key={hour} className="flex min-h-11 gap-4 py-1.5">
+            <li
+              key={hour}
+              className={cn(
+                "animate-rise-in -mx-2 flex min-h-11 gap-4 rounded-[var(--radius-md)] px-2 py-1.5",
+                "transition-colors duration-200 ease-out hover:bg-surface-muted/70",
+                isNow && "bg-info-bg/40",
+                STAGGER[hour - START_HOUR] ?? "stagger-7",
+              )}
+            >
               <span
                 className={cn(
                   "flex w-20 shrink-0 items-center gap-1.5 pt-1 text-xs font-medium",
@@ -86,7 +96,12 @@ export function ScheduleDayView({
               </span>
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 {slotAppointments.length === 0 ? (
-                  <div className="flex h-full min-h-8 items-center border-b border-dashed border-border px-1 text-xs text-text-secondary/80">
+                  <div
+                    className={cn(
+                      "flex h-full min-h-8 items-center rounded-[var(--radius-sm)] border border-dashed border-border px-2 text-xs text-text-secondary/80",
+                      "transition-colors duration-200 ease-out hover:border-[var(--color-brand-blue)]/50 hover:bg-info-bg/50 hover:text-[var(--color-brand-blue-text)]",
+                    )}
+                  >
                     Open
                   </div>
                 ) : (
@@ -96,13 +111,21 @@ export function ScheduleDayView({
                       <div
                         key={appt.id}
                         className={cn(
-                          "flex min-w-0 items-center justify-between gap-3 rounded-[var(--radius-md)] border border-l-[3px] border-border bg-surface-muted px-3 py-2",
+                          "group/appt flex min-w-0 items-center justify-between gap-3 rounded-[var(--radius-md)] border border-l-[3px] border-border bg-surface-muted px-3 py-2",
+                          "transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:bg-surface hover:shadow-card motion-reduce:hover:translate-y-0",
                           STATUS_ACCENT[appt.status],
+                          appt.status === "IN_PROGRESS" &&
+                            "bg-warning-bg/50 ring-1 ring-[var(--color-warning)]/35",
                         )}
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           {patient && (
-                            <Avatar name={patientFullName(patient)} src={patient.photoUrl} size="sm" />
+                            <Avatar
+                              name={patientFullName(patient)}
+                              src={patient.photoUrl}
+                              size="sm"
+                              className="transition-transform duration-200 ease-out group-hover/appt:-translate-y-0.5 motion-reduce:group-hover/appt:translate-y-0"
+                            />
                           )}
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-text-primary">
