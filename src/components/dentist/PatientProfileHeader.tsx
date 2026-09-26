@@ -11,6 +11,7 @@ import { LogTreatmentModal } from "@/components/dentist/LogTreatmentModal";
 import { patientFullName, patientAge } from "@/lib/patient-format";
 import { logTreatmentAndSendToBilling } from "@/lib/actions/log-treatment";
 import type { Patient } from "@/generated/prisma/client";
+import { formatCalendarDate } from "@/lib/datetime";
 
 export interface PatientProfileHeaderProps {
   patient: Patient;
@@ -48,11 +49,7 @@ export function PatientProfileHeader({
         <div>
           <h1 className="text-xl font-semibold text-text-primary">{name}</h1>
           <p className="text-sm text-text-secondary">
-            {new Date(patient.dateOfBirth).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}{" "}
+            {formatCalendarDate(new Date(patient.dateOfBirth))}{" "}
             ({patientAge(patient)} yrs) · {patient.sex === "MALE" ? "Male" : patient.sex === "FEMALE" ? "Female" : "Other"}
           </p>
           <div className="mt-2">

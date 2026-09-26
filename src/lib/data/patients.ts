@@ -1,6 +1,10 @@
 import "server-only";
+import {
+  RECALL_REMINDER_ACTION,
+  RECALL_REMINDER_COOLDOWN_MS,
+} from "@/lib/recall-reminder";
 import { prisma } from "@/lib/prisma";
-import type { Patient } from "@/generated/prisma/client";
+import type { Patient, UserRole } from "@/generated/prisma/client";
 
 /**
  * Real Prisma-backed patient queries — replaces the hardcoded roster
@@ -25,25 +29,51 @@ import type { Patient } from "@/generated/prisma/client";
  * reintroduce the bug — the column is overlaid at read time with the real
  * earliest upcoming appointment. Derived state can't go stale.
  */
-async function withDerivedNextAppt<T extends Patient>(
+async function withDerivedVisitDates<T extends Patient>(
   organizationId: string,
   patients: T[],
 ): Promise<T[]> {
   if (patients.length === 0) return patients;
 
-  const upcoming = await prisma.appointment.groupBy({
-    by: ["patientId"],
-    where: {
-      organizationId,
-      patientId: { in: patients.map((p) => p.id) },
-      startTime: { gte: new Date() },
-      status: { notIn: ["CANCELLED", "NO_SHOW"] },
-    },
-    _min: { startTime: true },
-  });
+  const patientIds = patients.map((p) => p.id);
+
+  const [upcoming, lastVisits] = await Promise.all([
+    prisma.appointment.groupBy({
+      by: ["patientId"],
+      where: {
+        organizationId,
+        patientId: { in: patientIds },
+        startTime: { gte: new Date() },
+        status: { notIn: ["CANCELLED", "NO_SHOW"] },
+      },
+      _min: { startTime: true },
+    }),
+    /*
+     * `lastCleaningAt` drifted the same way `nextApptAt` did, and showed it
+     * more plainly: the dashboard printed "Last cleaning: Mar 21, 2026"
+     * directly above "Cleaning completed on Aug 20, 2026" — the snapshot and
+     * the appointment table disagreeing inside one card. Overlaid from the
+     * most recent COMPLETED visit for the same reason as above.
+     */
+    prisma.appointment.groupBy({
+      by: ["patientId"],
+      where: {
+        organizationId,
+        patientId: { in: patientIds },
+        status: "COMPLETED",
+      },
+      _max: { startTime: true },
+    }),
+  ]);
 
   const nextByPatient = new Map(upcoming.map((row) => [row.patientId, row._min.startTime]));
-  return patients.map((p) => ({ ...p, nextApptAt: nextByPatient.get(p.id) ?? null }));
+  const lastByPatient = new Map(lastVisits.map((row) => [row.patientId, row._max.startTime]));
+
+  return patients.map((p) => ({
+    ...p,
+    nextApptAt: nextByPatient.get(p.id) ?? null,
+    lastCleaningAt: lastByPatient.get(p.id) ?? null,
+  }));
 }
 
 export async function listPatients(organizationId: string): Promise<Patient[]> {
@@ -51,14 +81,14 @@ export async function listPatients(organizationId: string): Promise<Patient[]> {
     where: { organizationId },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
   });
-  return withDerivedNextAppt(organizationId, patients);
+  return withDerivedVisitDates(organizationId, patients);
 }
 
 /** Scoped by organizationId so one tenant can never fetch another tenant's patient by guessing an id. */
 export async function getPatientById(organizationId: string, id: string): Promise<Patient | null> {
   const patient = await prisma.patient.findFirst({ where: { id, organizationId } });
   if (!patient) return null;
-  const [withNext] = await withDerivedNextAppt(organizationId, [patient]);
+  const [withNext] = await withDerivedVisitDates(organizationId, [patient]);
   return withNext;
 }
 
@@ -83,4 +113,73 @@ export async function listFollowUps(organizationId: string, limit = 5): Promise<
     orderBy: { nextApptAt: "asc" },
     take: limit,
   });
+}
+
+/**
+ * Which of these patients have had a recall reminder inside the cooldown.
+ *
+ * Read from the audit trail rather than the message thread: the audit row is
+ * what `sendRecallReminder` de-duplicates against, so reading the same
+ * source keeps the button's initial state and the server's answer in
+ * agreement. Matching on message text would drift the moment the wording
+ * changes.
+ */
+export async function recentlyRemindedPatientIds(
+  organizationId: string,
+  patientIds: string[],
+): Promise<Set<string>> {
+  if (patientIds.length === 0) return new Set();
+  const rows = await prisma.auditLog.findMany({
+    where: {
+      organizationId,
+      action: RECALL_REMINDER_ACTION,
+      resourceId: { in: patientIds },
+      createdAt: { gte: new Date(Date.now() - RECALL_REMINDER_COOLDOWN_MS) },
+    },
+    select: { resourceId: true },
+  });
+  return new Set(rows.map((r) => r.resourceId));
+}
+
+/** The clinician a patient is currently under, and how that was decided. */
+export interface AssignedProvider {
+  id: string;
+  name: string;
+  role: UserRole;
+}
+
+/**
+ * Who each patient is currently seeing, keyed by patient id.
+ *
+ * There is no `Patient.providerId` column — a patient isn't formally assigned
+ * to a clinician anywhere in the schema — so this derives it the same way the
+ * Patient portal's "your care team" does: whoever treated them most recently.
+ * Deriving it means it can't go stale the way a denormalised column would
+ * (see `withDerivedVisitDates` above for what that looked like).
+ *
+ * `distinct` on `patientId` with a descending sort gives Prisma the latest
+ * appointment per patient in one query rather than one per patient.
+ */
+export async function assignedProviders(
+  organizationId: string,
+  patientIds: string[],
+): Promise<Map<string, AssignedProvider>> {
+  if (patientIds.length === 0) return new Map();
+
+  const latest = await prisma.appointment.findMany({
+    where: { organizationId, patientId: { in: patientIds }, status: { not: "CANCELLED" } },
+    distinct: ["patientId"],
+    orderBy: [{ patientId: "asc" }, { startTime: "desc" }],
+    select: {
+      patientId: true,
+      provider: { select: { id: true, name: true, role: true } },
+    },
+  });
+
+  return new Map(
+    latest.map((row) => [
+      row.patientId,
+      { id: row.provider.id, name: row.provider.name, role: row.provider.role },
+    ]),
+  );
 }

@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/cn";
 import { issueConsentForm } from "@/lib/actions/clinical-records";
 import type { ConsentForm } from "@/generated/prisma/client";
+import { formatClinicDate } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 export interface PatientConsentFormsPanelProps {
   patientId: string;
@@ -27,6 +29,7 @@ const TEXTAREA_CLASSES =
  * shows whether they have.
  */
 export function PatientConsentFormsPanel({ patientId, forms, canManage = true }: PatientConsentFormsPanelProps) {
+  const timeZone = useClinicTimeZone();
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -150,8 +153,8 @@ export function PatientConsentFormsPanel({ patientId, forms, canManage = true }:
                 <p className="truncate text-sm font-medium text-text-primary">{form.title}</p>
                 <p className="truncate text-xs text-text-secondary">
                   {form.status === "SIGNED" && form.signedAt
-                    ? `Signed by ${form.signatureName} · ${form.signedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-                    : `Issued ${form.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
+                    ? `Signed by ${form.signatureName} · ${formatClinicDate(form.signedAt, timeZone)}`
+                    : `Issued ${formatClinicDate(form.createdAt, timeZone)}`}
                 </p>
               </div>
               <Badge tone={form.status === "SIGNED" ? "success" : "warning"} className="shrink-0">

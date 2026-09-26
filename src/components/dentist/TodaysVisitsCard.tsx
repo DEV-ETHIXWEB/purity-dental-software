@@ -14,135 +14,102 @@ export interface TodaysVisitsCardProps {
 
 type Segment = "new" | "returning";
 
+const SEGMENTS: { key: Segment; label: string; dot: string; rule: string }[] = [
+  {
+    key: "new",
+    label: "New",
+    dot: "bg-[var(--color-brand-blue)]",
+    rule: "bg-[var(--color-brand-blue)]",
+  },
+  {
+    key: "returning",
+    label: "Returning",
+    dot: "bg-[var(--color-brand-teal)]",
+    rule: "bg-[var(--color-brand-teal)]",
+  },
+];
+
 /**
- * Today's visit count as a two-segment ring (New vs. Returning), matching
- * the Figma Dashboard's headline card — extends `CollectionRateRing`'s
- * single-arc math to two arcs sharing one circumference, plus the existing
- * `WeeklyVisitsChart` underneath (unchanged).
+ * Today's visit count, split New vs. Returning, with the week's volume
+ * underneath.
  *
- * Both arcs sweep in on mount via `.chart-ring-draw`, and the legend is
- * hoverable the same way `CollectionRateRing`'s is: highlighting a row
- * thickens its arc, fades the other, and reveals that segment's share.
+ * This used to be a two-segment ring with the split relegated to a legend
+ * beside it. The ring cost a 112px square to encode one ratio that the two
+ * numbers state outright, and on the most common day — nothing booked yet —
+ * it drew an empty grey circle around a zero. The two figures now sit side by
+ * side at full size, which is what the card is actually for, and the
+ * `WeeklyVisitsChart` below is unchanged.
  */
 export function TodaysVisitsCard({ total, newCount, returningCount, weekly }: TodaysVisitsCardProps) {
   const [hovered, setHovered] = useState<Segment | null>(null);
 
-  const radius = 46;
-  const circumference = 2 * Math.PI * radius;
-  const newFraction = total > 0 ? newCount / total : 0;
-  const newLength = circumference * newFraction;
-  const returningLength = circumference - newLength;
-  const returningRotation = -90 + newFraction * 360;
-
+  const valueFor = (key: Segment) => (key === "new" ? newCount : returningCount);
   const share = (value: number) => (total > 0 ? Math.round((value / total) * 100) : 0);
-
-  const rows: { key: Segment; label: string; value: number; dot: string; ring: string }[] = [
-    {
-      key: "new",
-      label: "New",
-      value: newCount,
-      dot: "bg-[var(--color-brand-blue)]",
-      ring: "hover:border-[var(--color-brand-blue)]",
-    },
-    {
-      key: "returning",
-      label: "Returning",
-      value: returningCount,
-      dot: "bg-[var(--color-brand-teal)]",
-      ring: "hover:border-[var(--color-brand-teal)]",
-    },
-  ];
 
   return (
     <Card className="animate-rise-in stagger-2 transition-shadow duration-300 ease-out hover:shadow-card-hover">
       <CardHeader>
         <CardTitle>Today&apos;s Visits</CardTitle>
+        <span className="text-sm text-text-secondary">
+          <span className="font-semibold text-text-primary">{total}</span>{" "}
+          {total === 1 ? "visit" : "visits"} booked
+        </span>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <div className="flex items-center justify-center gap-6">
-          <svg
-            width="112"
-            height="112"
-            viewBox="0 0 112 112"
-            role="img"
-            aria-label={`${total} visits today: ${newCount} new, ${returningCount} returning`}
-            className="overflow-visible"
-          >
-            <circle cx="56" cy="56" r={radius} fill="none" stroke="var(--color-surface-sunken)" strokeWidth="10" />
-            {total > 0 && (
-              <>
-                <circle
-                  cx="56"
-                  cy="56"
-                  r={radius}
-                  fill="none"
-                  stroke="var(--color-brand-blue)"
-                  strokeWidth={hovered === "new" ? 12 : 10}
-                  strokeDasharray={`${newLength} ${circumference - newLength}`}
-                  transform="rotate(-90 56 56)"
-                  className={cn(
-                    "chart-ring-draw transition-all duration-200 ease-out",
-                    hovered === "returning" && "opacity-35",
-                  )}
-                />
-                <circle
-                  cx="56"
-                  cy="56"
-                  r={radius}
-                  fill="none"
-                  stroke="var(--color-brand-teal)"
-                  strokeWidth={hovered === "returning" ? 12 : 10}
-                  strokeDasharray={`${returningLength} ${circumference - returningLength}`}
-                  transform={`rotate(${returningRotation} 56 56)`}
-                  className={cn(
-                    "chart-ring-draw transition-all duration-200 ease-out",
-                    hovered === "new" && "opacity-35",
-                  )}
-                />
-              </>
-            )}
-            <text x="56" y="62" textAnchor="middle" className="fill-text-primary text-[26px] font-bold">
-              {hovered === "new" ? newCount : hovered === "returning" ? returningCount : total}
-            </text>
-          </svg>
-          <dl className="flex flex-col gap-2 text-sm">
-            {rows.map((row) => (
+        <dl
+          className="grid grid-cols-2 divide-x divide-border"
+          aria-label={`${total} visits today: ${newCount} new, ${returningCount} returning`}
+        >
+          {SEGMENTS.map((segment) => {
+            const value = valueFor(segment.key);
+            const active = hovered === segment.key;
+            return (
               <div
-                key={row.key}
-                className={cn(
-                  "flex items-center gap-2 rounded-[var(--radius-lg)] border border-transparent px-2 py-1.5 transition-all duration-200 ease-out",
-                  row.ring,
-                  hovered === row.key ? "bg-surface-muted" : "bg-transparent",
-                )}
-                onMouseEnter={() => setHovered(row.key)}
+                key={segment.key}
+                onMouseEnter={() => setHovered(segment.key)}
                 onMouseLeave={() => setHovered(null)}
+                className={cn(
+                  "flex flex-col gap-2 px-4 py-1 transition-colors duration-200 ease-out",
+                  // First cell keeps its left padding off the card edge.
+                  "first:pl-0 last:pr-0",
+                )}
               >
+                {/* A short colour rule rather than a legend dot alone: it ties
+                    each figure to its series without needing a key. */}
                 <span
-                  className={cn(
-                    "h-2.5 w-2.5 shrink-0 rounded-full transition-transform duration-200 ease-out",
-                    row.dot,
-                    hovered === row.key && "scale-125",
-                  )}
                   aria-hidden="true"
+                  className={cn(
+                    "h-1 w-8 rounded-full transition-all duration-200 ease-out",
+                    segment.rule,
+                    active ? "w-12 opacity-100" : "opacity-70",
+                  )}
                 />
-                <div>
-                  <dt className="text-text-secondary">{row.label}</dt>
-                  <dd className="font-semibold text-text-primary">
-                    {row.value}
-                    <span
-                      className={cn(
-                        "ml-1.5 text-xs font-normal text-text-secondary transition-opacity duration-200 ease-out",
-                        hovered === row.key && total > 0 ? "opacity-100" : "opacity-0",
-                      )}
-                    >
-                      {share(row.value)}%
+                <dt className="flex items-center gap-2 text-sm text-text-secondary">
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "h-2 w-2 shrink-0 rounded-full transition-transform duration-200 ease-out",
+                      segment.dot,
+                      active && "scale-125",
+                    )}
+                  />
+                  {segment.label}
+                </dt>
+                <dd className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold leading-none tracking-tight text-text-primary">
+                    {value}
+                  </span>
+                  {total > 0 && (
+                    <span className="text-xs font-medium text-text-secondary">
+                      {share(value)}%
                     </span>
-                  </dd>
-                </div>
+                  )}
+                </dd>
               </div>
-            ))}
-          </dl>
-        </div>
+            );
+          })}
+        </dl>
+
         <WeeklyVisitsChart data={weekly} />
       </CardContent>
     </Card>

@@ -5,6 +5,7 @@ import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { MobileNavDrawer } from "./MobileNavDrawer";
 import { BottomNav } from "./BottomNav";
+import { ClinicTimeZoneProvider } from "./ClinicTimeZone";
 import type { ShellConfig } from "./types";
 
 export interface PortalShellProps extends ShellConfig {
@@ -31,6 +32,7 @@ export function PortalShell({
   messagesHref,
   hasUnreadNotifications,
   notifications,
+  timeZone,
 }: PortalShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -53,55 +55,57 @@ export function PortalShell({
      * `h-dvh` (not `h-screen`) so mobile browser chrome collapsing doesn't
      * leave the bottom of the shell cut off.
      */
-    <div className="flex h-dvh overflow-hidden">
-      {/* Stretches to the shell's full height as a flex item — no `sticky`
-          or `self-start` needed now that the shell is viewport-sized, and
-          the profile/log-out footer stays on screen at any scroll position. */}
-      <div className="hidden lg:block">
-        <Sidebar variant="desktop" navItems={navItems} homeHref={homeHref} user={user} />
-      </div>
+    <ClinicTimeZoneProvider timeZone={timeZone}>
+      <div className="flex h-dvh overflow-hidden">
+        {/* Stretches to the shell's full height as a flex item — no `sticky`
+            or `self-start` needed now that the shell is viewport-sized, and
+            the profile/log-out footer stays on screen at any scroll position. */}
+        <div className="hidden lg:block">
+          <Sidebar variant="desktop" navItems={navItems} homeHref={homeHref} user={user} />
+        </div>
 
-      <MobileNavDrawer
-        open={mobileNavOpen}
-        onClose={() => setMobileNavOpen(false)}
-        navItems={navItems}
-        homeHref={homeHref}
-        user={user}
-      />
-
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <TopBar
-          onOpenMobileNav={() => setMobileNavOpen(true)}
-          showMobileNavButton={!hasBottomNav}
-          user={user}
-          showSearch={showSearch}
+        <MobileNavDrawer
+          open={mobileNavOpen}
+          onClose={() => setMobileNavOpen(false)}
+          navItems={navItems}
           homeHref={homeHref}
-          searchPlaceholder={searchPlaceholder}
-          primaryAction={primaryAction}
-          patientsHref={patientsHref}
-          profileHref={profileHref}
-          messagesHref={messagesHref}
-          hasUnreadNotifications={hasUnreadNotifications}
-          notifications={notifications}
+          user={user}
         />
-        {/* The only scrolling region. `min-h-0` lets it actually shrink
-            inside the flex column instead of forcing the shell taller. */}
-        <main className="min-h-0 flex-1 overflow-y-auto bg-background">
-          {/*
-           * The scroll container fills the window so the background does too,
-           * but the content itself stops at 1600px and centres. Without the
-           * cap a 2560px monitor stretched this page to 2320px — cards over
-           * 880px wide and text lines far past a comfortable measure. 1600 is
-           * above every MacBook content width (a 16" gets 1488), so laptops
-           * are unaffected and only genuinely large displays are reined in.
-           */}
-          <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">{children}</div>
-        </main>
 
-        {/* A flex sibling of <main>, not an overlay — see BottomNav for why
-            that keeps it clear of the scrolling content for free. */}
-        {hasBottomNav && bottomNavItems && <BottomNav items={bottomNavItems} />}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <TopBar
+            onOpenMobileNav={() => setMobileNavOpen(true)}
+            showMobileNavButton={!hasBottomNav}
+            user={user}
+            showSearch={showSearch}
+            homeHref={homeHref}
+            searchPlaceholder={searchPlaceholder}
+            primaryAction={primaryAction}
+            patientsHref={patientsHref}
+            profileHref={profileHref}
+            messagesHref={messagesHref}
+            hasUnreadNotifications={hasUnreadNotifications}
+            notifications={notifications}
+          />
+          {/* The only scrolling region. `min-h-0` lets it actually shrink
+              inside the flex column instead of forcing the shell taller. */}
+          <main className="min-h-0 flex-1 overflow-y-auto bg-background">
+            {/*
+             * The scroll container fills the window so the background does too,
+             * but the content itself stops at 1600px and centres. Without the
+             * cap a 2560px monitor stretched this page to 2320px — cards over
+             * 880px wide and text lines far past a comfortable measure. 1600 is
+             * above every MacBook content width (a 16" gets 1488), so laptops
+             * are unaffected and only genuinely large displays are reined in.
+             */}
+            <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">{children}</div>
+          </main>
+
+          {/* A flex sibling of <main>, not an overlay — see BottomNav for why
+              that keeps it clear of the scrolling content for free. */}
+          {hasBottomNav && bottomNavItems && <BottomNav items={bottomNavItems} />}
+        </div>
       </div>
-    </div>
+    </ClinicTimeZoneProvider>
   );
 }

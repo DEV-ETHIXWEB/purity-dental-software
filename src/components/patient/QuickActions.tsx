@@ -38,7 +38,7 @@ const ACTIONS: QuickAction[] = [
  */
 export function QuickActions() {
   return (
-    <Card className="animate-rise-in stagger-2 transition-shadow duration-300 ease-out hover:shadow-card-hover">
+    <Card className="animate-rise-in stagger-2 flex h-full flex-col md:col-span-2 transition-shadow duration-300 ease-out hover:shadow-card-hover">
       <CardHeader>
         <CardTitle>Quick actions</CardTitle>
       </CardHeader>

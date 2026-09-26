@@ -8,6 +8,8 @@ import { CheckmarkIcon } from "@/components/ui/icons/purity-raster-icons";
 import { cn } from "@/lib/cn";
 import { formatFriendlyDate, formatTime } from "./formatters";
 import { bookPatientAppointment } from "@/lib/actions/patient-appointments";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
+import { clinicParts, instantFromClinicWallClock } from "@/lib/datetime";
 
 const BOOKING_REASONS = ["Routine Cleaning", "Consultation", "Follow-up", "Tooth Pain / Urgent"] as const;
 
@@ -17,19 +19,34 @@ interface OpenSlot {
   endTime: Date;
 }
 
-/** Synthetic near-future weekday slots (9am-4pm) over the next two weeks — there's no real provider-availability engine yet. */
-function generateOpenSlots(): OpenSlot[] {
+/**
+ * Synthetic near-future weekday slots (9am-4pm) over the next two weeks —
+ * there's no real provider-availability engine yet.
+ *
+ * Built in clinic time, not the browser's. This used `setHours(9)`, which
+ * sets 9 AM wherever the patient happens to be sitting: a patient in IST was
+ * offered "9:00 AM" that the practice would have seen as 11:30 PM the night
+ * before, and booking it created exactly that appointment. Weekday is
+ * checked against the clinic's calendar day for the same reason.
+ */
+function generateOpenSlots(timeZone: string): OpenSlot[] {
   const slots: OpenSlot[] = [];
-  const now = new Date();
+  const today = clinicParts(new Date(), timeZone);
   let dayOffset = 1;
+
   while (slots.length < 5 && dayOffset < 15) {
-    const day = new Date(now);
-    day.setDate(day.getDate() + dayOffset);
-    const dow = day.getDay();
+    // Day arithmetic on a UTC midnight anchor so month and year roll over.
+    const day = new Date(Date.UTC(today.year, today.month - 1, today.day + dayOffset));
+    const dow = day.getUTCDay();
     if (dow !== 0 && dow !== 6) {
-      const hour = 9 + (slots.length % 6);
-      const startTime = new Date(day);
-      startTime.setHours(hour, 0, 0, 0);
+      const startTime = instantFromClinicWallClock(
+        day.getUTCFullYear(),
+        day.getUTCMonth() + 1,
+        day.getUTCDate(),
+        9 + (slots.length % 6),
+        0,
+        timeZone,
+      );
       const endTime = new Date(startTime.getTime() + 30 * 60000);
       slots.push({ id: `slot_${dayOffset}`, startTime, endTime });
     }
@@ -53,6 +70,7 @@ export interface BookAppointmentFlowProps {
  * confirming creates a real Appointment via `bookPatientAppointment`.
  */
 export function BookAppointmentFlow({ providerId, providerName, onBooked }: BookAppointmentFlowProps) {
+  const timeZone = useClinicTimeZone();
   const [step, setStep] = useState<Step>("select");
   const [reason, setReason] = useState<string>(BOOKING_REASONS[0]);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
@@ -60,7 +78,7 @@ export function BookAppointmentFlow({ providerId, providerName, onBooked }: Book
   const [error, setError] = useState<string | null>(null);
   const reasonLabelId = useId();
 
-  const openSlots = useMemo(() => generateOpenSlots(), []);
+  const openSlots = useMemo(() => generateOpenSlots(timeZone), [timeZone]);
   const selectedSlot = openSlots.find((s) => s.id === selectedSlotId) ?? null;
 
   async function handleConfirm() {
@@ -98,8 +116,8 @@ export function BookAppointmentFlow({ providerId, providerName, onBooked }: Book
           <div>
             <p className="text-lg font-semibold text-text-primary">Appointment requested</p>
             <p className="mt-1 text-sm text-text-secondary">
-              We&apos;ve got your {reason.toLowerCase()} request for {formatFriendlyDate(selectedSlot.startTime)} at{" "}
-              {formatTime(selectedSlot.startTime)}. You&apos;ll see it in your upcoming visits below.
+              We&apos;ve got your {reason.toLowerCase()} request for {formatFriendlyDate(selectedSlot.startTime, timeZone)} at{" "}
+              {formatTime(selectedSlot.startTime, timeZone)}. You&apos;ll see it in your upcoming visits below.
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={handleStartOver} className="mt-2">
@@ -144,7 +162,10 @@ export function BookAppointmentFlow({ providerId, providerName, onBooked }: Book
                       value={r}
                       checked={reason === r}
                       onChange={() => setReason(r)}
-                      className="h-4 w-4 text-[var(--color-brand-blue)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+                      // `accent-color`, not `text-`: a native radio ignores colour set through
+                      // `color`, which is why the dot was rendering in the browser/OS
+                      // default (purple on this machine) rather than on-brand.
+                      className="h-4 w-4 accent-[var(--color-brand-blue-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
                     />
                     {r}
                   </label>
@@ -170,9 +191,9 @@ export function BookAppointmentFlow({ providerId, providerName, onBooked }: Book
                       )}
                     >
                       <span className="font-medium text-text-primary">
-                        {formatFriendlyDate(slot.startTime)}
+                        {formatFriendlyDate(slot.startTime, timeZone)}
                       </span>
-                      <span className="text-text-secondary">{formatTime(slot.startTime)} · {providerName}</span>
+                      <span className="text-text-secondary">{formatTime(slot.startTime, timeZone)} · {providerName}</span>
                     </button>
                   </li>
                 ))}
@@ -199,11 +220,11 @@ export function BookAppointmentFlow({ providerId, providerName, onBooked }: Book
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-text-secondary">Date</dt>
-                <dd className="font-medium text-text-primary">{formatFriendlyDate(selectedSlot.startTime)}</dd>
+                <dd className="font-medium text-text-primary">{formatFriendlyDate(selectedSlot.startTime, timeZone)}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-text-secondary">Time</dt>
-                <dd className="font-medium text-text-primary">{formatTime(selectedSlot.startTime)}</dd>
+                <dd className="font-medium text-text-primary">{formatTime(selectedSlot.startTime, timeZone)}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-text-secondary">With</dt>

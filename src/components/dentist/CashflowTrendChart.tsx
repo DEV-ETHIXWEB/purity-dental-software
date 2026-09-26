@@ -53,7 +53,11 @@ export function CashflowTrendChart({ data }: CashflowTrendChartProps) {
      * and cut the tooltip off).
      */
     <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:overflow-x-visible sm:px-0">
-      <div className="min-w-[540px] sm:min-w-0">
+      {/* 540px forced a sideways scroll inside the card on a 375px phone.
+          320px fits the narrowest supported viewport, and the chart is an
+          SVG with a viewBox so it scales rather than clipping; the scroller
+          above still catches anything narrower. */}
+      <div className="min-w-[320px] sm:min-w-[540px] lg:min-w-0">
       <div
         className="relative"
         onMouseLeave={() => setActiveIndex(null)}

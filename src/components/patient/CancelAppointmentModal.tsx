@@ -7,15 +7,29 @@ import { Button } from "@/components/ui/Button";
 import type { Appointment, User } from "@/generated/prisma/client";
 import { formatFriendlyDate, formatTime } from "./formatters";
 import { cancelPatientAppointment } from "@/lib/actions/patient-appointments";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 interface CancelAppointmentModalProps {
   appointment: (Appointment & { provider: Pick<User, "name"> }) | null;
+  /**
+   * Whether this visit is one whose time has passed while still open — the
+   * "Missed visits" group. Passed in rather than derived from `Date.now()`
+   * here: that is an impure read during render, and it could disagree with
+   * the grouping the list has already shown the patient.
+   */
+  isMissed?: boolean;
   onClose: () => void;
   onConfirm: (appointmentId: string) => void;
 }
 
 /** Confirmation dialog before cancelling an upcoming appointment; persists via the real cancelPatientAppointment action. */
-export function CancelAppointmentModal({ appointment, onClose, onConfirm }: CancelAppointmentModalProps) {
+export function CancelAppointmentModal({
+  appointment,
+  isMissed = false,
+  onClose,
+  onConfirm,
+}: CancelAppointmentModalProps) {
+  const timeZone = useClinicTimeZone();
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,10 +50,10 @@ export function CancelAppointmentModal({ appointment, onClose, onConfirm }: Canc
     <Modal
       open={appointment !== null}
       onClose={onClose}
-      title="Cancel this appointment?"
+      title={isMissed ? "Clear this missed appointment?" : "Cancel this appointment?"}
       description={
         appointment
-          ? `${appointment.procedureType} on ${formatFriendlyDate(appointment.startTime)} at ${formatTime(appointment.startTime)}`
+          ? `${appointment.procedureType} on ${formatFriendlyDate(appointment.startTime, timeZone)} at ${formatTime(appointment.startTime, timeZone)}`
           : undefined
       }
       footer={
@@ -61,8 +75,17 @@ export function CancelAppointmentModal({ appointment, onClose, onConfirm }: Canc
       }
     >
       <div className="flex flex-col gap-2">
+        {/*
+          * The copy follows the list the appointment is actually in. A visit
+          * whose time has passed but was never resolved sits under "Missed
+          * visits", not "Your upcoming visits", and telling someone it will
+          * be removed from a list it was never in reads like the dialog is
+          * about a different booking.
+          */}
         <p className="text-sm text-text-secondary">
-          This will remove it from your upcoming visits. If you change your mind, you can always book a new time.
+          {isMissed
+            ? "This will clear it from your missed visits. If you still need this appointment, you can book a new time."
+            : "This will remove it from your upcoming visits. If you change your mind, you can always book a new time."}
         </p>
         {error && (
           <p role="alert" className="text-sm text-error">

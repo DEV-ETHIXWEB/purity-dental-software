@@ -11,7 +11,9 @@ import {
   weeklyVisitCounts,
   todaysVisitBreakdown,
 } from "@/lib/data/appointments";
-import { listFollowUps } from "@/lib/data/patients";
+import { listFollowUps, recentlyRemindedPatientIds } from "@/lib/data/patients";
+import { clinicTimeZone } from "@/lib/data/organization";
+import { formatClinicDate } from "@/lib/datetime";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -20,11 +22,12 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const session = await requirePageRole(["DENTIST", "ADMIN"]);
+  const timeZone = await clinicTimeZone(session.user.organizationId);
   const { organizationId, id: providerId, name } = session.user;
 
   const [visitBreakdown, weekly, allAppointments, followUps] = await Promise.all([
-    todaysVisitBreakdown(organizationId, providerId),
-    weeklyVisitCounts(organizationId, providerId),
+    todaysVisitBreakdown(organizationId, providerId, timeZone),
+    weeklyVisitCounts(organizationId, providerId, timeZone),
     appointmentsForProvider(organizationId, providerId),
     listFollowUps(organizationId),
   ]);
@@ -32,6 +35,15 @@ export default async function DashboardPage() {
   const recentConsultation = allAppointments
     .filter((a) => a.status === "COMPLETED")
     .sort((a, b) => b.startTime.getTime() - a.startTime.getTime())[0];
+
+  // Which follow-ups already had a reminder inside the cooldown, so the
+  // button renders as "Reminded" instead of inviting a refused send.
+  const remindedPatientIds = [
+    ...(await recentlyRemindedPatientIds(
+      organizationId,
+      followUps.map((p) => p.id),
+    )),
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,14 +66,16 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2 xl:grid-cols-3">
         {recentConsultation ? (
           <RecentConsultationCard
+            timeZone={timeZone}
             patient={recentConsultation.patient}
-            observation={`${recentConsultation.procedureType} completed on ${recentConsultation.startTime.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`}
+            lastVisitAt={recentConsultation.startTime}
+            observation={`${recentConsultation.procedureType} completed on ${formatClinicDate(recentConsultation.startTime, timeZone)}.`}
           />
         ) : (
-          <Card className="animate-rise-in stagger-3 transition-shadow duration-300 ease-out hover:shadow-card-hover">
+          <Card className="animate-rise-in stagger-3 flex h-full flex-col transition-shadow duration-300 ease-out hover:shadow-card-hover">
             <CardHeader>
               <CardTitle>Recent Consultation</CardTitle>
             </CardHeader>
@@ -71,7 +85,7 @@ export default async function DashboardPage() {
           </Card>
         )}
 
-        <FollowUpsCard patients={followUps} />
+        <FollowUpsCard patients={followUps} remindedPatientIds={remindedPatientIds} />
 
         <UpcomingCard appointments={allAppointments} />
       </div>

@@ -20,8 +20,17 @@ const variantClasses: Record<ButtonVariant, string> = {
   danger: "bg-error text-white hover:opacity-90",
 };
 
+/*
+ * Only `sm` carries a touch-target floor.
+ *
+ * 44px is the smallest reliable touch target (WCAG 2.5.5 / Apple HIG).
+ * Because the app sets a 110% root font size, `h-10` (2.5rem) already
+ * measures 44px and `h-12` more — md, lg and icon are compliant as they
+ * stand, and adding a floor there would only inflate them. `h-8` lands at
+ * ~35px, so it gets a floor below `sm`, where taps replace clicks.
+ */
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "h-8 px-3 text-sm gap-1.5",
+  sm: "min-h-11 sm:min-h-0 h-8 px-3 text-sm gap-1.5",
   md: "h-10 px-4 text-sm gap-2",
   lg: "h-12 px-6 text-base gap-2",
   icon: "h-10 w-10 p-0 justify-center",

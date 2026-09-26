@@ -1,9 +1,12 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { Calendar, Clock, User as UserIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import type { AppointmentStatus, User, Appointment } from "@/generated/prisma/client";
 import { formatFriendlyDate, formatTime } from "./formatters";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   SCHEDULED: "Scheduled",
@@ -32,6 +35,7 @@ interface AppointmentCardProps {
 
 /** Friendly card presentation of one appointment — used across dashboard, appointments list, and history. */
 export function AppointmentCard({ appointment, action }: AppointmentCardProps) {
+  const timeZone = useClinicTimeZone();
   return (
     <Card className="p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -43,11 +47,11 @@ export function AppointmentCard({ appointment, action }: AppointmentCardProps) {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text-secondary">
             <span className="inline-flex items-center gap-1.5">
               <Calendar className="h-4 w-4" aria-hidden="true" />
-              {formatFriendlyDate(appointment.startTime)}
+              {formatFriendlyDate(appointment.startTime, timeZone)}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Clock className="h-4 w-4" aria-hidden="true" />
-              {formatTime(appointment.startTime)}
+              {formatTime(appointment.startTime, timeZone)}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <UserIcon className="h-4 w-4" aria-hidden="true" />

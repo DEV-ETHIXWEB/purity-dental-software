@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { patientFullName } from "@/lib/patient-format";
 import type { WaitlistEntryWithPatient } from "@/lib/data/waitlist";
+import { writeDragPayload } from "@/components/dentist/schedule-dnd";
 
 export interface ScheduleWaitlistSidebarProps {
   entries: WaitlistEntryWithPatient[];
@@ -41,7 +42,7 @@ export function ScheduleWaitlistSidebar({ entries, bookingId, onBook }: Schedule
       </div>
       {entries.length > 0 && (
         <p className="mb-3 text-xs text-text-secondary">
-          Drag a patient onto an open slot to fill a cancellation.
+          Drag a patient onto any slot to book them into it.
         </p>
       )}
       {entries.length === 0 ? (
@@ -55,10 +56,10 @@ export function ScheduleWaitlistSidebar({ entries, bookingId, onBook }: Schedule
               <li
                 key={entry.id}
                 draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData("text/plain", entry.patientId);
-                  e.dataTransfer.effectAllowed = "copy";
-                }}
+                // The waitlist entry id, not the patient id: the drop target
+                // books this specific request, and the action re-reads the
+                // patient from the entry rather than trusting the wire.
+                onDragStart={(e) => writeDragPayload(e.dataTransfer, { kind: "waitlist", id: entry.id })}
                 className={cn(
                   "animate-rise-in group/entry cursor-grab rounded-[var(--radius-md)] border border-border bg-surface p-3 shadow-card active:cursor-grabbing",
                   "transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:shadow-card-hover motion-reduce:hover:translate-y-0",

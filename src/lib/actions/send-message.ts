@@ -29,6 +29,20 @@ export async function sendPatientMessage(patientId: string, body: string): Promi
       if (patient.userId !== session.user.id) {
         return { ok: false, error: "You can only message from your own account." };
       }
+      /*
+       * The front desk decides which patients get a direct line to the care
+       * team (see `setMessagingAccess`). Checked here rather than only in the
+       * UI because the Messages page hiding its composer stops a person, not
+       * a POST to this action.
+       *
+       * Staff are not subject to it: the flag gates the patient side only.
+       */
+      if (!patient.canMessageCareTeam) {
+        return {
+          ok: false,
+          error: "Messaging isn't enabled on your account. Please call the practice.",
+        };
+      }
       await sendMessage({
         organizationId: session.user.organizationId,
         patientId,

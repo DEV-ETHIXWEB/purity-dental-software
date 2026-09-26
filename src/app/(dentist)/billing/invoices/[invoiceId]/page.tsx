@@ -19,6 +19,8 @@ import { requirePageRole } from "@/lib/auth/require-portal";
 import { getInvoiceById } from "@/lib/data/billing";
 import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
 import { patientFullName, patientAge } from "@/lib/patient-format";
+import { clinicTimeZone } from "@/lib/data/organization";
+import { formatClinicDate } from "@/lib/datetime";
 
 export async function generateMetadata({
   params,
@@ -36,6 +38,7 @@ export default async function InvoiceDetailPage({
   params,
 }: PageProps<"/billing/invoices/[invoiceId]">) {
   const session = await requirePageRole(["DENTIST", "ADMIN"]);
+  const timeZone = await clinicTimeZone(session.user.organizationId);
   const { invoiceId } = await params;
   const invoice = await getInvoiceById(session.user.organizationId, invoiceId);
   if (!invoice) notFound();
@@ -121,13 +124,13 @@ export default async function InvoiceDetailPage({
             <div className="flex justify-between">
               <span className="text-text-secondary">Issued</span>
               <span className="text-text-primary">
-                {invoice.issuedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                {formatClinicDate(invoice.issuedAt, timeZone)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-text-secondary">Due</span>
               <span className="text-text-primary">
-                {invoice.dueAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                {formatClinicDate(invoice.dueAt, timeZone)}
               </span>
             </div>
             <div className="h-px bg-border" />

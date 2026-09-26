@@ -26,9 +26,40 @@ const ACTION_CLASSES =
  */
 export function HelpFab({ phoneHref = "tel:+15550100200" }: HelpFabProps) {
   const [open, setOpen] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
+
+  /*
+   * Step out of the way while the reader moves down the page.
+   *
+   * A fixed button sits on top of whatever happens to be under it — on a
+   * 375px screen it was covering the end of a sentence on My Care and the
+   * "Payment due" badge on Bills. Scrolling down hides it; scrolling back up
+   * (the direction you move when you're looking for a control) brings it
+   * straight back, so nothing is lost.
+   *
+   * The app shell scrolls <main>, not the window — see PortalShell.
+   */
+  useEffect(() => {
+    const scroller = document.querySelector("main");
+    if (!scroller) return;
+
+    let lastY = scroller.scrollTop;
+    function onScroll() {
+      const y = scroller!.scrollTop;
+      const delta = y - lastY;
+      // Ignore jitter, and never hide right at the top of the page.
+      if (Math.abs(delta) > 6) {
+        setHidden(delta > 0 && y > 80);
+        lastY = y;
+      }
+    }
+
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => scroller.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -61,6 +92,9 @@ export function HelpFab({ phoneHref = "tel:+15550100200" }: HelpFabProps) {
         // Clear of the bottom tab bar on a phone; a normal corner button once
         // the tab bar is gone.
         "pointer-events-none fixed inset-x-0 bottom-24 z-30 flex flex-col items-end gap-2 px-4 sm:bottom-6 sm:px-6 lg:bottom-8",
+        "transition-all duration-200 ease-out motion-reduce:transition-none",
+        // Never duck away mid-interaction — an open menu stays put.
+        hidden && !open && "pointer-events-none translate-y-24 opacity-0",
       )}
     >
       {open && (

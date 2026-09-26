@@ -5,6 +5,7 @@ import { requirePortalRole } from "@/lib/auth/require-portal";
 import { prisma } from "@/lib/prisma";
 import { hasUnreadForPatient } from "@/lib/data/messaging";
 import { getOrganization } from "@/lib/data/organization";
+import { DEFAULT_CLINIC_TIMEZONE } from "@/lib/datetime";
 import { patientNotifications } from "@/lib/data/notifications";
 import { PatientOnboarding } from "@/components/patient/PatientOnboarding";
 import { HelpFab } from "@/components/patient/HelpFab";
@@ -49,6 +50,7 @@ export default async function PatientPortalLayout({
       <PortalShell
         {...patientShellConfig(
           { name: session.user.name, avatarUrl: patient?.photoUrl ?? undefined, role: "Patient" },
+          organization?.timezone ?? DEFAULT_CLINIC_TIMEZONE,
           hasUnread,
           notifications,
         )}

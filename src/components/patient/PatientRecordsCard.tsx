@@ -4,10 +4,13 @@ import { EmptyState } from "@/components/patient/EmptyState";
 import { PrescriptionIcon } from "@/components/ui/icons/purity-raster-icons";
 import { cn } from "@/lib/cn";
 import type { DocumentSummary, PrescriptionWithPrescriber } from "@/lib/data/clinical-records";
+import { formatClinicDate } from "@/lib/datetime";
 
 export interface PatientRecordsCardProps {
   prescriptions: PrescriptionWithPrescriber[];
   documents: DocumentSummary[];
+  /** The practice's timezone — Server Components can't read `useClinicTimeZone()`. */
+  timeZone: string;
 }
 
 const STAGGER = ["stagger-0", "stagger-1", "stagger-2", "stagger-3", "stagger-4", "stagger-5"];
@@ -27,7 +30,7 @@ function formatSize(bytes: number): string {
  * to their record. Both are server-rendered — the download links go through
  * `/api/documents/[id]`, which checks the file really belongs to them.
  */
-export function PatientRecordsCard({ prescriptions, documents }: PatientRecordsCardProps) {
+export function PatientRecordsCard({ prescriptions, documents, timeZone }: PatientRecordsCardProps) {
   if (prescriptions.length === 0 && documents.length === 0) {
     return (
       <EmptyState
@@ -90,13 +93,13 @@ export function PatientRecordsCard({ prescriptions, documents }: PatientRecordsC
                       href={`/api/documents/${doc.id}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="block truncate text-sm font-medium text-text-primary transition-colors duration-200 ease-out hover:text-[var(--color-brand-blue-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
+                      className="touch-link w-full truncate text-sm font-medium text-text-primary transition-colors duration-200 ease-out hover:text-[var(--color-brand-blue-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
                     >
                       {doc.title}
                     </a>
                     <p className="truncate text-xs text-text-secondary">
                       {formatSize(doc.sizeBytes)} ·{" "}
-                      {doc.uploadedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {formatClinicDate(doc.uploadedAt, timeZone)}
                     </p>
                   </div>
                 </li>

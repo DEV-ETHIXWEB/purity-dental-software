@@ -1,0 +1,44 @@
+import type { Metadata } from "next";
+import { ProfileSettingsCard } from "@/components/shell/ProfileSettingsCard";
+import { NotificationPreferencesCard } from "@/components/shell/NotificationPreferencesCard";
+import { requirePageRole } from "@/lib/auth/require-portal";
+import { getNotificationPreferences } from "@/lib/data/account";
+
+export const metadata: Metadata = {
+  title: "Settings",
+  description: "Manage your admin profile and notification preferences.",
+};
+
+export default async function AdminSettingsPage() {
+  const session = await requirePageRole(["ADMIN"]);
+  const notificationPreferences = await getNotificationPreferences(session.user.id);
+  const { name, email, phone, avatarUrl, presence } = session.user;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="animate-rise-in stagger-0">
+        <h1 className="text-2xl font-semibold text-text-primary">Settings</h1>
+        <p className="text-sm text-text-secondary">Manage your profile and preferences.</p>
+      </div>
+
+      <ProfileSettingsCard
+        name={name}
+        email={email}
+        phone={phone ?? ""}
+        roleLabel="Practice Admin"
+        photoUrl={avatarUrl}
+        presence={presence}
+      />
+
+      <NotificationPreferencesCard
+        preferences={notificationPreferences}
+        items={[
+          { id: "notif-staff", label: "Staff account changes" },
+          { id: "notif-billing", label: "Billing and payment activity" },
+          { id: "notif-appts", label: "New and updated appointments" },
+        ]}
+        description="Choose what you get notified about."
+      />
+    </div>
+  );
+}

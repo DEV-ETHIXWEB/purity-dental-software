@@ -2,6 +2,29 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { TreatmentPlanItem } from "@/generated/prisma/client";
 
+/** Which of the three connector colours a step contributes to the gaps beside it. */
+type StepTone = "done" | "current" | "upcoming";
+
+function toneFor(step: TreatmentPlanItem | undefined): StepTone {
+  if (!step) return "upcoming";
+  if (step.status === "COMPLETED") return "done";
+  if (step.status === "ACTIVE") return "current";
+  return "upcoming";
+}
+
+/**
+ * Class for the gap between two adjacent steps. Only the pairings that can
+ * actually occur are defined — steps are sorted completed-first, so a gap
+ * never runs backwards from current to done.
+ */
+function gapClass(left: StepTone, right: StepTone): string {
+  if (left === "done" && right === "done") return "stepper-gap-done-done";
+  if (left === "done" && right === "current") return "stepper-gap-done-current";
+  if (left === "done") return "stepper-gap-done-upcoming";
+  if (left === "current") return "stepper-gap-current-upcoming";
+  return "stepper-gap-upcoming-upcoming";
+}
+
 const STEP_ORDER: Record<TreatmentPlanItem["status"], number> = {
   COMPLETED: 1,
   ACTIVE: 2,
@@ -40,9 +63,12 @@ export function TreatmentProgress({ items }: { items: TreatmentPlanItem[] }) {
           const isDone = step.status === "COMPLETED";
           const isCurrent = step.status === "ACTIVE";
           const isLast = index === steps.length - 1;
-          // The connector belongs to the step on its left, and is "filled"
-          // only once that step is behind the patient.
-          const connectorDone = isDone;
+
+          // Each half-span paints the whole ramp for its gap and shows its
+          // own half, so the gradient runs unbroken past the marker.
+          const tone = toneFor(step);
+          const leftGap = index === 0 ? null : gapClass(toneFor(steps[index - 1]), tone);
+          const rightGap = isLast ? null : gapClass(tone, toneFor(steps[index + 1]));
 
           return (
             <li
@@ -55,7 +81,7 @@ export function TreatmentProgress({ items }: { items: TreatmentPlanItem[] }) {
                 <span
                   className={cn(
                     "h-0.5 flex-1 rounded-full",
-                    index === 0 ? "bg-transparent" : steps[index - 1].status === "COMPLETED" ? "bg-success" : "bg-border-strong",
+                    leftGap ? `stepper-gap stepper-gap-end ${leftGap}` : "bg-transparent",
                   )}
                   aria-hidden="true"
                 />
@@ -74,7 +100,7 @@ export function TreatmentProgress({ items }: { items: TreatmentPlanItem[] }) {
                 <span
                   className={cn(
                     "h-0.5 flex-1 rounded-full",
-                    isLast ? "bg-transparent" : connectorDone ? "bg-success" : "bg-border-strong",
+                    rightGap ? `stepper-gap stepper-gap-start ${rightGap}` : "bg-transparent",
                   )}
                   aria-hidden="true"
                 />

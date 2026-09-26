@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { Receipt } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -6,6 +8,7 @@ import type { InvoiceStatus } from "@/generated/prisma/client";
 import type { InvoiceWithDetails } from "@/lib/data/billing";
 import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
 import { formatShortDate } from "./formatters";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 const STATUS_LABEL: Record<InvoiceStatus, string> = {
   PAID: "Paid",
@@ -30,6 +33,7 @@ interface InvoiceCardProps {
 
 /** Friendly card presentation of one invoice — used on the Patient billing page instead of a dense table. */
 export function InvoiceCard({ invoice, action }: InvoiceCardProps) {
+  const timeZone = useClinicTimeZone();
   const total = invoice.totalCents;
   // The line items are the pre-adjustment subtotal, and `totalCents` is
   // already net of insurance and tax (see Invoice.totalCents). Showing only
@@ -51,7 +55,7 @@ export function InvoiceCard({ invoice, action }: InvoiceCardProps) {
           </div>
           <div>
             <p className="text-sm font-semibold text-text-primary">{invoiceNumber(invoice)}</p>
-            <p className="text-xs text-text-secondary">Issued {formatShortDate(invoice.issuedAt)}</p>
+            <p className="text-xs text-text-secondary">Issued {formatShortDate(invoice.issuedAt, timeZone)}</p>
           </div>
         </div>
         <Badge tone={STATUS_TONE[invoice.status]}>{STATUS_LABEL[invoice.status]}</Badge>

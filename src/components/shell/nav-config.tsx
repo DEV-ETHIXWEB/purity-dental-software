@@ -11,6 +11,7 @@ import type { ShellConfig, ShellNotification, ShellUser } from "./types";
  */
 export function dentistShellConfig(
   user: ShellUser,
+  timeZone: string,
   hasUnreadNotifications = false,
   notifications: ShellNotification[] = [],
 ): ShellConfig {
@@ -25,7 +26,7 @@ export function dentistShellConfig(
     ],
     user,
     searchPlaceholder: "Search patients by name, email, or phone…",
-    primaryAction: { label: "New Appointment", icon: "plus", href: "/schedule" },
+    primaryAction: { label: "New Appointment", icon: "plus", href: "/schedule?book=1" },
     // Settings is deliberately absent, matching the Patient portal: it's one
     // tap away in the top bar's avatar menu, and a further tab would squeeze
     // the rest. Labels are shortened for a 5-up bar on a 375px screen.
@@ -39,11 +40,13 @@ export function dentistShellConfig(
     profileHref: "/settings",
     hasUnreadNotifications,
     notifications,
+    timeZone,
   };
 }
 
 export function hygienistShellConfig(
   user: ShellUser,
+  timeZone: string,
   hasUnreadNotifications = false,
   notifications: ShellNotification[] = [],
 ): ShellConfig {
@@ -59,7 +62,7 @@ export function hygienistShellConfig(
     ],
     user,
     searchPlaceholder: "Search patients by name, email, or phone…",
-    primaryAction: { label: "New Appointment", icon: "plus", href: "/hygienist/schedule" },
+    primaryAction: { label: "New Appointment", icon: "plus", href: "/hygienist/schedule?book=1" },
     // Settings is deliberately absent, matching the Patient portal: it's one
     // tap away in the top bar's avatar menu, and a further tab would squeeze
     // the rest. Labels are shortened for a 5-up bar on a 375px screen.
@@ -75,6 +78,7 @@ export function hygienistShellConfig(
     messagesHref: "/hygienist/messages",
     hasUnreadNotifications,
     notifications,
+    timeZone,
   };
 }
 
@@ -85,6 +89,7 @@ export function hygienistShellConfig(
  */
 export function receptionistShellConfig(
   user: ShellUser,
+  timeZone: string,
   hasUnreadNotifications = false,
   notifications: ShellNotification[] = [],
 ): ShellConfig {
@@ -94,7 +99,7 @@ export function receptionistShellConfig(
       { href: "/receptionist/dashboard", label: "Dashboard", icon: "dashboard" },
       { href: "/receptionist/schedule", label: "Schedule", icon: "schedule" },
       { href: "/receptionist/patients", label: "Patients", icon: "patients" },
-      { href: "/receptionist/providers", label: "Team", icon: "userPlus" },
+      { href: "/receptionist/providers", label: "Team", icon: "team" },
       { href: "/receptionist/billing", label: "Billing", icon: "billing" },
       { href: "/receptionist/settings", label: "Settings", icon: "settings" },
     ],
@@ -113,12 +118,13 @@ export function receptionistShellConfig(
       { href: "/receptionist/dashboard", label: "Home", icon: "dashboard" },
       { href: "/receptionist/schedule", label: "Schedule", icon: "schedule" },
       { href: "/receptionist/patients", label: "Patients", icon: "patients" },
-      { href: "/receptionist/providers", label: "Team", icon: "userPlus" },
+      { href: "/receptionist/providers", label: "Team", icon: "team" },
       { href: "/receptionist/billing", label: "Billing", icon: "billing" },
     ],
     profileHref: "/receptionist/settings",
     hasUnreadNotifications,
     notifications,
+    timeZone,
   };
 }
 
@@ -131,6 +137,7 @@ export function receptionistShellConfig(
  */
 export function patientShellConfig(
   user: ShellUser,
+  timeZone: string,
   hasUnreadNotifications = false,
   notifications: ShellNotification[] = [],
 ): ShellConfig {
@@ -165,5 +172,50 @@ export function patientShellConfig(
     messagesHref: "/patient/messages",
     hasUnreadNotifications,
     notifications,
+    timeZone,
+  };
+}
+
+/**
+ * Admin portal shell.
+ *
+ * Admins previously had no portal of their own and were routed into the
+ * Dentist one, which showed them a clinician's day rather than the practice.
+ * This is theirs: staff, permissions, activity and practice settings.
+ *
+ * No `primaryAction` — the useful "new" here is a staff member, which lives
+ * on the Staff page next to the list it adds to, and a top-bar shortcut to
+ * it would be the only thing that button ever did.
+ */
+export function adminShellConfig(
+  user: ShellUser,
+  timeZone: string,
+  hasUnreadNotifications = false,
+  notifications: ShellNotification[] = [],
+): ShellConfig {
+  return {
+    homeHref: "/admin/dashboard",
+    navItems: [
+      { href: "/admin/dashboard", label: "Overview", icon: "dashboard" },
+      { href: "/admin/staff", label: "Staff", icon: "team" },
+      { href: "/admin/audit", label: "Activity", icon: "care" },
+      { href: "/admin/practice", label: "Practice", icon: "billing" },
+      { href: "/admin/settings", label: "Settings", icon: "settings" },
+    ],
+    user,
+    searchPlaceholder: "Search staff by name or email…",
+    // The top bar's search submits here as `?q=`, which the Staff page reads
+    // — and it doubles as the notification bell's fallback target.
+    patientsHref: "/admin/staff",
+    bottomNavItems: [
+      { href: "/admin/dashboard", label: "Overview", icon: "dashboard" },
+      { href: "/admin/staff", label: "Staff", icon: "team" },
+      { href: "/admin/audit", label: "Activity", icon: "care" },
+      { href: "/admin/practice", label: "Practice", icon: "billing" },
+    ],
+    profileHref: "/admin/settings",
+    hasUnreadNotifications,
+    notifications,
+    timeZone,
   };
 }

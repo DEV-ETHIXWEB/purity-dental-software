@@ -17,6 +17,7 @@ import { getPatientById } from "@/lib/data/patients";
 import { patientFullName } from "@/lib/patient-format";
 import { treatmentPlanForPatient, perioChartForPatient } from "@/lib/data/treatment";
 import { patientRecords } from "@/lib/data/clinical-records";
+import { clinicTimeZone } from "@/lib/data/organization";
 
 export async function generateMetadata({
   params,
@@ -36,6 +37,7 @@ export default async function HygienistPatientProfilePage({
   params,
 }: PageProps<"/hygienist/patients/[patientId]">) {
   const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
+  const timeZone = await clinicTimeZone(session.user.organizationId);
   const { patientId } = await params;
   const patient = await getPatientById(session.user.organizationId, patientId);
   if (!patient) notFound();
@@ -90,7 +92,7 @@ export default async function HygienistPatientProfilePage({
                 </TabsContent>
 
                 <TabsContent value="perio-chart">
-                  <PerioChartCard entry={perioEntry} />
+                  <PerioChartCard entry={perioEntry} timeZone={timeZone} />
                 </TabsContent>
 
                 <TabsContent value="documents">

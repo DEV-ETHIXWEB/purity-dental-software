@@ -9,6 +9,8 @@ import { InsuranceIcon } from "@/components/ui/icons/purity-raster-icons";
 import { formatCentsAsCurrency } from "@/lib/billing-format";
 import { updatePatientBilling } from "@/lib/actions/update-patient";
 import type { Patient } from "@/generated/prisma/client";
+import { formatClinicDate } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 export interface BillingDetailsCardProps {
   patient: Patient;
@@ -18,6 +20,7 @@ export interface BillingDetailsCardProps {
 
 /** One section of the patient identity panel — see `ContactDetailsCard`'s header comment. */
 export function BillingDetailsCard({ patient, canEdit = false }: BillingDetailsCardProps) {
+  const timeZone = useClinicTimeZone();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -114,11 +117,7 @@ export function BillingDetailsCard({ patient, canEdit = false }: BillingDetailsC
           <span className="text-text-primary">
             Next appointment:{" "}
             {patient.nextApptAt
-              ? new Date(patient.nextApptAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })
+              ? formatClinicDate(new Date(patient.nextApptAt), timeZone)
               : "Not scheduled"}
           </span>
         </div>

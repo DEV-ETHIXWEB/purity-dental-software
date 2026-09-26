@@ -7,13 +7,13 @@ import { RecallStatusBadge } from "@/components/dentist/PatientStatusBadge";
 import { patientFullName } from "@/lib/patient-format";
 import type { ConversationWithUnread } from "@/lib/data/messaging";
 import { cn } from "@/lib/cn";
+import { clinicDayKey, formatClinicDateShort, formatClinicTime } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
-function formatTimestamp(date: Date) {
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-  return isToday
-    ? date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
-    : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+/** Today's threads show a clock, older ones a date — "today" on the practice's calendar. */
+function formatTimestamp(date: Date, timeZone: string) {
+  const isToday = clinicDayKey(date, timeZone) === clinicDayKey(new Date(), timeZone);
+  return isToday ? formatClinicTime(date, timeZone) : formatClinicDateShort(date, timeZone);
 }
 
 export interface ConversationListProps {
@@ -23,6 +23,7 @@ export interface ConversationListProps {
 }
 
 export function ConversationList({ conversations, selectedId, onSelect }: ConversationListProps) {
+  const timeZone = useClinicTimeZone();
   if (conversations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center">
@@ -62,7 +63,7 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
                   <p className="truncate text-sm font-medium text-text-primary">{name}</p>
                   {last && (
                     <span className="shrink-0 text-xs text-text-secondary">
-                      {formatTimestamp(last.sentAt)}
+                      {formatTimestamp(last.sentAt, timeZone)}
                     </span>
                   )}
                 </div>

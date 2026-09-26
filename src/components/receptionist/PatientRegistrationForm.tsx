@@ -20,7 +20,18 @@ const SEX_OPTIONS: { value: PatientRegistrationInput["sex"]; label: string }[] =
   { value: "OTHER", label: "Other" },
 ];
 
-const EMPTY_FORM: PatientRegistrationInput = {
+/**
+ * The form's own state shape. A controlled text input always holds a string,
+ * even for the two optional insurance fields — the schema is what turns a
+ * blank into `undefined` at parse time, so the state type can't just be the
+ * schema's output.
+ */
+type RegistrationFormValues = Omit<PatientRegistrationInput, "insuranceProvider" | "insurancePlan"> & {
+  insuranceProvider: string;
+  insurancePlan: string;
+};
+
+const EMPTY_FORM: RegistrationFormValues = {
   firstName: "",
   lastName: "",
   dateOfBirth: "",
@@ -47,12 +58,12 @@ const EMPTY_FORM: PatientRegistrationInput = {
 export function PatientRegistrationForm() {
   const router = useRouter();
   const formId = useId();
-  const [values, setValues] = useState<PatientRegistrationInput>(EMPTY_FORM);
+  const [values, setValues] = useState<RegistrationFormValues>(EMPTY_FORM);
   const [errors, setErrors] = useState<PatientRegistrationErrors>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  function setField<K extends keyof PatientRegistrationInput>(field: K, value: PatientRegistrationInput[K]) {
+  function setField<K extends keyof RegistrationFormValues>(field: K, value: RegistrationFormValues[K]) {
     setValues((prev) => ({ ...prev, [field]: value }));
     // Clear that field's error as soon as the person edits it again, rather
     // than making them resubmit to find out it's fixed.
@@ -93,7 +104,9 @@ export function PatientRegistrationForm() {
     try {
       const formPayload = new FormData();
       for (const [key, value] of Object.entries(data)) {
-        formPayload.set(key, value);
+        // Insurance is optional and normalises to undefined when blank —
+        // omit the key entirely so the column stores NULL, not "undefined".
+        if (value !== undefined) formPayload.set(key, value);
       }
 
       const actionResult = await registerPatient(formPayload);
@@ -219,12 +232,14 @@ export function PatientRegistrationForm() {
           </fieldset>
 
           <fieldset className="flex flex-col gap-4" disabled={isSubmitting}>
-            <legend className="mb-1 text-sm font-semibold text-text-primary">Insurance</legend>
+            <legend className="mb-1 text-sm font-semibold text-text-primary">
+              Insurance{" "}
+              <span className="font-normal text-text-secondary">— leave blank for self-pay</span>
+            </legend>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 id={`${formId}-insuranceProvider`}
                 label="Insurance provider"
-                required
                 value={values.insuranceProvider}
                 error={errors.insuranceProvider}
                 onChange={(v) => setField("insuranceProvider", v)}
@@ -233,7 +248,6 @@ export function PatientRegistrationForm() {
               <FormField
                 id={`${formId}-insurancePlan`}
                 label="Insurance plan"
-                required
                 value={values.insurancePlan}
                 error={errors.insurancePlan}
                 onChange={(v) => setField("insurancePlan", v)}

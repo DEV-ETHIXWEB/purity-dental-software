@@ -9,20 +9,29 @@ import { EmptyState } from "@/components/patient/EmptyState";
 import { ChatIconFilled } from "@/components/ui/icons/purity-icons";
 import type { Message } from "@/generated/prisma/client";
 import { cn } from "@/lib/cn";
+import { formatClinicDateTime } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
-function formatMessageTime(date: Date) {
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+function formatMessageTime(date: Date, timeZone: string) {
+  return formatClinicDateTime(date, timeZone);
 }
 
 interface PatientMessageThreadProps {
   messages: Message[];
   patientFirstName: string;
-  onSend: (body: string) => void | Promise<void>;
+  /**
+   * Returns whether the send was accepted. A refusal keeps the draft in the
+   * box and surfaces the reason — the server can reject a send the UI
+   * believed was allowed (access revoked while this page sat open), and
+   * silently swallowing that loses what the patient typed.
+   */
+  onSend: (body: string) => Promise<{ ok: boolean; error?: string }>;
+  /**
+   * Whether this patient is allowed to send. Granted by the front desk; when
+   * false the composer is replaced by a short explanation rather than left
+   * on screen to fail on submit. History stays readable either way.
+   */
+  canSend?: boolean;
 }
 
 /**
@@ -31,9 +40,16 @@ interface PatientMessageThreadProps {
  * align right, PROVIDER-sent bubbles align left. Sending persists via the
  * real `sendPatientMessage` Server Action (called by the parent view).
  */
-export function PatientMessageThread({ messages, patientFirstName, onSend }: PatientMessageThreadProps) {
+export function PatientMessageThread({
+  messages,
+  patientFirstName,
+  onSend,
+  canSend = true,
+}: PatientMessageThreadProps) {
+  const timeZone = useClinicTimeZone();
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const listEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,9 +62,14 @@ export function PatientMessageThread({ messages, patientFirstName, onSend }: Pat
     if (!trimmed || sending) return;
 
     setSending(true);
+    setSendError(null);
     try {
-      await onSend(trimmed);
-      setDraft("");
+      const result = await onSend(trimmed);
+      if (result.ok) {
+        setDraft("");
+      } else {
+        setSendError(result.error ?? "Couldn't send this message. Please try again.");
+      }
     } finally {
       setSending(false);
     }
@@ -70,7 +91,11 @@ export function PatientMessageThread({ messages, patientFirstName, onSend }: Pat
             <EmptyState
               icon={ChatIconFilled}
               title="No messages yet"
-              description="Send a message below and your care team will get back to you soon."
+              description={
+                canSend
+                  ? "Send a message below and your care team will get back to you soon."
+                  : "Messaging isn't switched on for your account yet."
+              }
             />
           </div>
         ) : (
@@ -80,7 +105,7 @@ export function PatientMessageThread({ messages, patientFirstName, onSend }: Pat
               return (
                 <li key={message.id} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
                   <span className="mb-1 text-xs text-text-secondary">
-                    {isMe ? patientFirstName : "Care team"} · {formatMessageTime(message.sentAt)}
+                    {isMe ? patientFirstName : "Care team"} · {formatMessageTime(message.sentAt, timeZone)}
                   </span>
                   <div
                     className={cn(
@@ -98,6 +123,15 @@ export function PatientMessageThread({ messages, patientFirstName, onSend }: Pat
         <div ref={listEndRef} />
       </div>
 
+      {!canSend ? (
+        <div className="border-t border-border p-4">
+          <p className="text-sm font-medium text-text-primary">Messaging isn&apos;t enabled yet</p>
+          <p className="mt-1 text-sm text-text-secondary">
+            Ask the front desk to turn on messaging for your account, and you&apos;ll be able to reach your
+            hygienist from here. Call the practice in the meantime.
+          </p>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-border p-4">
         <div className="flex-1">
           <VisuallyHiddenLabel htmlFor="patient-message-composer">Message your care team</VisuallyHiddenLabel>
@@ -126,6 +160,12 @@ export function PatientMessageThread({ messages, patientFirstName, onSend }: Pat
           <Send className="h-4 w-4" aria-hidden="true" />
         </Button>
       </form>
+      )}
+      {sendError && (
+        <p role="alert" className="border-t border-border px-4 pb-4 text-sm text-error-text">
+          {sendError}
+        </p>
+      )}
     </div>
   );
 }

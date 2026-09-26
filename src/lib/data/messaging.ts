@@ -19,10 +19,9 @@ export async function listConversations(organizationId: string): Promise<Convers
   const conversations = await prisma.conversation.findMany({
     where: { organizationId },
     include: { messages: { orderBy: { sentAt: "asc" } }, patient: true },
-    orderBy: { updatedAt: "desc" },
   });
 
-  return conversations.map((c) => {
+  const withUnread = conversations.map((c) => {
     let lastProviderAt = new Date(0);
     for (const m of c.messages) {
       if (m.sender === "PROVIDER" && m.sentAt > lastProviderAt) lastProviderAt = m.sentAt;
@@ -30,6 +29,24 @@ export async function listConversations(organizationId: string): Promise<Convers
     const unreadCount = c.messages.filter((m) => m.sender === "PATIENT" && m.sentAt > lastProviderAt).length;
     return { ...c, unreadCount };
   });
+
+  /*
+   * Most recent activity first.
+   *
+   * This used to `orderBy: { updatedAt: "desc" }` on the Conversation row,
+   * which never moved: sending a message writes to the Message table and
+   * leaves the parent row untouched. The inbox showed a thread last replied
+   * to in August above one from September. Sorted here rather than in SQL
+   * because the ordering key lives on the child rows, which are already
+   * loaded for the unread count.
+   */
+  return withUnread.sort((a, b) => lastActivityAt(b) - lastActivityAt(a));
+}
+
+/** When a thread last saw a message — its creation time if it has none yet. */
+function lastActivityAt(conversation: ConversationWithUnread): number {
+  const last = conversation.messages.at(-1);
+  return (last?.sentAt ?? conversation.createdAt).getTime();
 }
 
 export async function messagesForConversation(

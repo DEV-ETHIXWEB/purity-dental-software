@@ -15,7 +15,9 @@ import {
   todaysVisitBreakdown,
   weeklyVisitCounts,
 } from "@/lib/data/appointments";
-import { listFollowUps } from "@/lib/data/patients";
+import { listFollowUps, recentlyRemindedPatientIds } from "@/lib/data/patients";
+import { clinicTimeZone } from "@/lib/data/organization";
+import { formatClinicDate, formatClinicTime } from "@/lib/datetime";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -24,14 +26,15 @@ export const metadata: Metadata = {
 
 export default async function HygienistDashboardPage() {
   const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
+  const timeZone = await clinicTimeZone(session.user.organizationId);
   const { organizationId, id: providerId, name } = session.user;
 
   const [today, weekly, allAppointments, followUps, visitBreakdown] = await Promise.all([
-    todaysAppointmentsForProvider(organizationId, providerId),
-    weeklyVisitCounts(organizationId, providerId),
+    todaysAppointmentsForProvider(organizationId, providerId, timeZone),
+    weeklyVisitCounts(organizationId, providerId, timeZone),
     appointmentsForProvider(organizationId, providerId),
     listFollowUps(organizationId),
-    todaysVisitBreakdown(organizationId, providerId),
+    todaysVisitBreakdown(organizationId, providerId, timeZone),
   ]);
 
   const completedToday = today.filter((a) => a.status === "COMPLETED").length;
@@ -46,6 +49,15 @@ export default async function HygienistDashboardPage() {
   const hour = now.getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const weeklyVisitTotal = weekly.reduce((sum, d) => sum + d.count, 0);
+
+  // Which follow-ups already had a reminder inside the cooldown, so the
+  // button renders as "Reminded" instead of inviting a refused send.
+  const remindedPatientIds = [
+    ...(await recentlyRemindedPatientIds(
+      organizationId,
+      followUps.map((p) => p.id),
+    )),
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,7 +80,7 @@ export default async function HygienistDashboardPage() {
             icon: BellRing,
             tone: followUps.length > 0 ? "warning" : "default",
           },
-          { label: "Next up", value: nextUp ? nextUp.startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—", icon: Clock3 },
+          { label: "Next up", value: nextUp ? formatClinicTime(nextUp.startTime, timeZone) : "—", icon: Clock3 },
         ]}
       />
 
@@ -91,22 +103,30 @@ export default async function HygienistDashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <TodaysScheduleCard appointments={today} completed={completedToday} basePath="/hygienist" scheduleHref="/hygienist/schedule" />
+          <TodaysScheduleCard
+            appointments={today}
+            completed={completedToday}
+            basePath="/hygienist"
+            scheduleHref="/hygienist/schedule"
+            timeZone={timeZone}
+          />
         </div>
-        <FollowUpsCard patients={followUps} />
+        <FollowUpsCard patients={followUps} remindedPatientIds={remindedPatientIds} />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2">
         {recentConsultation ? (
           <RecentConsultationCard
+            timeZone={timeZone}
             patient={recentConsultation.patient}
-            observation={`${recentConsultation.procedureType} completed on ${recentConsultation.startTime.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`}
+            lastVisitAt={recentConsultation.startTime}
+            observation={`${recentConsultation.procedureType} completed on ${formatClinicDate(recentConsultation.startTime, timeZone)}.`}
             basePath="/hygienist"
           />
         ) : (
-          <Card className="animate-rise-in stagger-3 transition-shadow duration-300 ease-out hover:shadow-card-hover">
+          <Card className="animate-rise-in stagger-3 flex h-full flex-col transition-shadow duration-300 ease-out hover:shadow-card-hover">
             <CardHeader>
               <CardTitle>Recent Consultation</CardTitle>
             </CardHeader>

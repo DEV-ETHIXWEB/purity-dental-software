@@ -22,6 +22,8 @@ import { sendPatientMessage } from "@/lib/actions/send-message";
 import type { InvoiceWithDetails } from "@/lib/data/billing";
 import type { InvoiceStatus } from "@/generated/prisma/client";
 import { cn } from "@/lib/cn";
+import { formatClinicDate } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 const PAGE_SIZE = 5;
 const FILTERS: { label: string; value: InvoiceStatus | "ALL" }[] = [
@@ -38,6 +40,7 @@ export interface InvoicesTableProps {
 }
 
 export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
+  const timeZone = useClinicTimeZone();
   const router = useRouter();
   const [filter, setFilter] = useState<InvoiceStatus | "ALL">("ALL");
   const [page, setPage] = useState(1);
@@ -127,7 +130,7 @@ export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
                     </Link>
                   </TableCell>
                   <TableCell className="text-text-secondary">
-                    {invoice.issuedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    {formatClinicDate(invoice.issuedAt, timeZone)}
                   </TableCell>
                   <TableCell className="text-text-primary">{patientFullName(invoice.patient)}</TableCell>
                   <TableCell className="font-medium text-text-primary">

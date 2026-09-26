@@ -10,6 +10,8 @@ import {
   ChatIconFilled,
   ChecklistIcon,
   ChecklistIconFilled,
+  DoctorIcon,
+  DoctorIconFilled,
 } from "@/components/ui/icons/purity-icons";
 import { HomeIcon, SettingsIcon, HeadsetIcon, type RasterIconProps } from "@/components/ui/icons/purity-raster-icons";
 import type { ComponentType } from "react";
@@ -53,6 +55,14 @@ export const SHELL_ICONS = {
   plus: lucidePair(Plus),
   messages: { Outline: ChatIcon, Filled: ChatIconFilled },
   userPlus: lucidePair(UserPlus),
+  /*
+   * The Purity glyphs carry the brand gradient inside the SVG; lucide icons
+   * paint from `currentColor`, so a lucide nav item rendered in the muted
+   * text colour and read as black next to five blue ones. Team gets the
+   * clinician glyph from the set instead. `userPlus` stays for the Register
+   * Patient button, which is white-on-gradient and wants currentColor.
+   */
+  team: { Outline: DoctorIcon, Filled: DoctorIconFilled },
   care: { Outline: ChecklistIcon, Filled: ChecklistIconFilled },
   health: lucidePair(HeartPulse),
   notifications: lucidePair(Bell),

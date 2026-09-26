@@ -42,6 +42,7 @@ const DENTIST_PREFIXES = ["/dashboard", "/schedule", "/patients", "/billing", "/
 const HYGIENIST_PREFIX = "/hygienist";
 const RECEPTIONIST_PREFIX = "/receptionist";
 const PATIENT_PREFIX = "/patient";
+const ADMIN_PREFIX = "/admin";
 
 const PUBLIC_PATHS = new Set([
   "/login",
@@ -49,9 +50,13 @@ const PUBLIC_PATHS = new Set([
   "/reset-password",
 ]);
 
-type PortalRole = "DENTIST" | "HYGIENIST" | "RECEPTIONIST" | "PATIENT";
+type PortalRole = "DENTIST" | "HYGIENIST" | "RECEPTIONIST" | "PATIENT" | "ADMIN";
 
 function matchPortal(pathname: string): PortalRole | null {
+  // Before the others only because `/admin` shares no prefix with them; the
+  // order here is not significant beyond the Dentist portal needing to come
+  // last, since its prefixes are bare root paths.
+  if (pathname.startsWith(ADMIN_PREFIX)) return "ADMIN";
   if (pathname.startsWith(HYGIENIST_PREFIX)) return "HYGIENIST";
   if (pathname.startsWith(RECEPTIONIST_PREFIX)) return "RECEPTIONIST";
   if (pathname.startsWith(PATIENT_PREFIX)) return "PATIENT";
@@ -140,15 +145,30 @@ function routeGuard(
  * Next's own documented guidance (React's dev build uses `eval` for
  * enhanced error stack reconstruction; production React/Next never do).
  *
- * Known residual gap: `next/image` sets a `style="color:transparent"`
- * attribute on its underlying <img> (verified via browser CSP-violation
- * reports; this repo's own components carry no inline `style=` — every
- * data-driven size/gradient uses SVG attributes or a named CSS class, see
- * globals.css). That one style is a fixed, non-user-controlled string with
- * no security relevance (it doesn't execute code or reflect any input) —
- * accepted as a known, low-severity, upstream Next.js/CSP interaction
- * rather than broadening `style-src` to `unsafe-inline`/`unsafe-hashes` for
- * the whole app to silence it. Revisit if a future Next release nonces it.
+ * `next/image` sets a `style="color:transparent"` attribute on its
+ * underlying <img> (this repo's own components carry no inline `style=` —
+ * every data-driven size/gradient uses SVG attributes or a named CSS class,
+ * see globals.css). This was previously left blocked and written off as
+ * console noise, which undersold it: a nonce can never authorise a style
+ * *attribute*, because CSP excludes attributes from nonce matching. So the
+ * browser dropped the declaration while React's client render still
+ * expected `{color: "transparent"}` — one hydration mismatch logged per
+ * image, up to 18 on an avatar-heavy page, on every route in every portal.
+ *
+ * `style-src-attr` fixes it at the narrowest scope the spec allows. When
+ * that directive is present, style *attributes* are matched against it
+ * alone — so attributes are now governed by the single hash below and
+ * nothing else, while `style-src` keeps governing <style> elements and
+ * stylesheets by nonce as before. `unsafe-hashes` is the keyword that lets
+ * a hash apply to an attribute at all; it widens nothing beyond the listed
+ * digest. The permitted declaration is a fixed, non-user-controlled string
+ * that executes nothing and reflects no input, so the worst an injection
+ * could achieve with it is transparent text. Browsers without
+ * `style-src-attr` support fall back to `style-src` and keep blocking it,
+ * exactly as before.
+ *
+ * If the hash ever stops matching, read the blocked declaration out of the
+ * CSP violation report and recompute it — do not reach for `unsafe-inline`.
  *
  * `unsafe-inline` was previously listed here for style-src in development,
  * but per the CSP spec browsers ignore `unsafe-inline` whenever a nonce is
@@ -164,6 +184,9 @@ function buildCsp(nonce: string): string {
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     `style-src 'self' 'nonce-${nonce}'`,
+    // sha256 of exactly `color:transparent` — the only style attribute the
+    // app emits, from next/image. See the note above before changing this.
+    `style-src-attr 'unsafe-hashes' 'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='`,
     `img-src 'self' blob: data:`,
     // next/font/google self-hosts font files at build time (no runtime
     // request to Google's CDN), so 'self' is sufficient here.

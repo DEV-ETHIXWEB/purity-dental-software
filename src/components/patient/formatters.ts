@@ -1,6 +1,18 @@
-/** Shared date/time formatting helpers for the Patient portal's friendlier copy. */
+/**
+ * Shared date/time formatting helpers for the Patient portal's friendlier copy.
+ *
+ * `timeZone` is REQUIRED on every helper that renders a clock time or a
+ * calendar day. It used to be optional, and most call sites omitted it — so
+ * `toLocale*` fell back to the viewer's own zone and a 9:30 AM clinic
+ * appointment rendered as 7:00 PM for a patient sitting in another country,
+ * while staff saw 9:30 AM for the same row. Making it required means the
+ * compiler catches a missed one instead of a patient catching it.
+ *
+ * Client components get the value from `useClinicTimeZone()`; Server
+ * Components pass `clinicTimeZone(organizationId)` down.
+ */
 
-export function formatFriendlyDate(date: Date, timeZone?: string) {
+export function formatFriendlyDate(date: Date, timeZone: string) {
   return date.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -9,15 +21,16 @@ export function formatFriendlyDate(date: Date, timeZone?: string) {
   });
 }
 
-export function formatShortDate(date: Date) {
+export function formatShortDate(date: Date, timeZone: string) {
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
+    timeZone,
   });
 }
 
-export function formatTime(date: Date, timeZone?: string) {
+export function formatTime(date: Date, timeZone: string) {
   return date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",

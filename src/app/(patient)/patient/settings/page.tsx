@@ -5,6 +5,8 @@ import { NotificationPreferencesCard } from "@/components/shell/NotificationPref
 import { requirePageRole } from "@/lib/auth/require-portal";
 import { getPatientForUser } from "@/lib/data/patients";
 import { patientFullName } from "@/lib/patient-format";
+import { getNotificationPreferences } from "@/lib/data/account";
+import { formatCalendarDateLong } from "@/lib/datetime";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -19,15 +21,16 @@ const notificationOptions = [
 
 export default async function PatientSettingsPage() {
   const session = await requirePageRole(["PATIENT"]);
+  const notificationPreferences = await getNotificationPreferences(session.user.id);
   const currentPatient = await getPatientForUser(session.user.id);
   if (!currentPatient) notFound();
 
   const name = patientFullName(currentPatient);
-  const dob = currentPatient.dateOfBirth.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  // UTC-pinned: `dateOfBirth` is a calendar column stored at UTC midnight,
+  // and formatting it in the server's own zone rendered "April 11" for a
+  // 12 April birthday on any host west of UTC — including the clinic's own
+  // America/New_York.
+  const dob = formatCalendarDateLong(currentPatient.dateOfBirth);
 
   return (
     <div className="flex flex-col gap-6">
@@ -46,6 +49,7 @@ export default async function PatientSettingsPage() {
       />
 
       <NotificationPreferencesCard
+        preferences={notificationPreferences}
         items={notificationOptions}
         description="Choose what you'd like us to notify you about."
         size="comfortable"

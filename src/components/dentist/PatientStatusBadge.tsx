@@ -1,10 +1,25 @@
-import { Badge } from "@/components/ui/Badge";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import type { PatientStatus } from "@/generated/prisma/client";
 
-const LABEL: Record<PatientStatus, string> = { ACTIVE: "Active", INACTIVE: "Inactive" };
+export const PATIENT_STATUS_LABEL: Record<PatientStatus, string> = {
+  ACTIVE: "Active",
+  COMPLETED: "Completed",
+  INACTIVE: "Archived",
+};
+
+/**
+ * "Archived" rather than "Inactive" in the UI: the word staff act on is
+ * Remove, and what that does is archive the record — reversibly, with the
+ * history intact. "Inactive" stays the stored value.
+ */
+const TONE: Record<PatientStatus, BadgeTone> = {
+  ACTIVE: "success",
+  COMPLETED: "brand-blue",
+  INACTIVE: "neutral",
+};
 
 export function PatientStatusBadge({ status }: { status: PatientStatus }) {
-  return <Badge tone={status === "ACTIVE" ? "success" : "neutral"}>{LABEL[status]}</Badge>;
+  return <Badge tone={TONE[status]}>{PATIENT_STATUS_LABEL[status]}</Badge>;
 }
 
 export function RecallStatusBadge({ status }: { status: string | null }) {

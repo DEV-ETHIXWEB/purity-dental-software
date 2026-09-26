@@ -12,6 +12,8 @@ import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
 import { cn } from "@/lib/cn";
 import type { InvoiceWithDetails } from "@/lib/data/billing";
 import type { InvoiceStatus, Patient } from "@/generated/prisma/client";
+import { formatClinicDateShort } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 const PAGE_SIZE = 7;
 const FILTERS: { label: string; value: InvoiceStatus | "ALL" }[] = [
@@ -35,6 +37,7 @@ export interface InvoicesListPanelProps {
  * flat table, unaffected.
  */
 export function InvoicesListPanel({ invoices, patients }: InvoicesListPanelProps) {
+  const timeZone = useClinicTimeZone();
   const pathname = usePathname();
   const [filter, setFilter] = useState<InvoiceStatus | "ALL">("ALL");
   const [query, setQuery] = useState("");
@@ -127,7 +130,7 @@ export function InvoicesListPanel({ invoices, patients }: InvoicesListPanelProps
                   <p className="truncate text-sm font-medium text-text-primary">{patientFullName(invoice.patient)}</p>
                   <p className="truncate text-xs text-text-secondary">
                     {invoiceNumber(invoice)} ·{" "}
-                    {invoice.issuedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    {formatClinicDateShort(invoice.issuedAt, timeZone)}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">

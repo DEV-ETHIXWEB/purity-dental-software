@@ -31,7 +31,7 @@ export interface NextAppointmentPanelProps {
  */
 export function NextAppointmentPanel({ appointment, practiceName, timeZone }: NextAppointmentPanelProps) {
   return (
-    <Card className="animate-rise-in stagger-2 transition-shadow duration-300 ease-out hover:shadow-card-hover">
+    <Card className="animate-rise-in stagger-2 flex h-full flex-col transition-shadow duration-300 ease-out hover:shadow-card-hover">
       <CardHeader>
         <CardTitle>Your next appointment</CardTitle>
       </CardHeader>

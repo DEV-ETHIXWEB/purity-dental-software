@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { generateToken, hashToken } from "@/lib/auth/tokens";
 import { isProduction } from "@/lib/env";
-import type { UserRole } from "@/generated/prisma/client";
+import type { UserPresence, UserRole } from "@/generated/prisma/client";
 
 /**
  * Session management — the single source of truth for "who is signed in."
@@ -29,6 +29,15 @@ export interface SessionUser {
   name: string;
   phone: string | null;
   avatarUrl: string | null;
+  /** Available / away, shown as a dot on this user's avatar across the shell. */
+  presence: UserPresence;
+  /**
+   * Raw per-person permission exceptions. Kept unparsed here so the session
+   * stays a straight projection of the row; read it through
+   * `hasPermission`/`effectivePermissions` in `auth/permissions.ts` rather
+   * than inspecting it directly.
+   */
+  permissionOverrides: unknown;
 }
 
 export interface CurrentSession {
@@ -120,6 +129,8 @@ export async function getCurrentSession(): Promise<CurrentSession | null> {
         name: session.user.name,
         phone: session.user.phone,
         avatarUrl: session.user.avatarUrl,
+        presence: session.user.presence,
+        permissionOverrides: session.user.permissionOverrides,
       },
     };
   } catch {
@@ -153,10 +164,7 @@ export function dashboardPathForRole(role: UserRole): string {
     case "PATIENT":
       return "/patient/dashboard";
     case "ADMIN":
-      // No dedicated Admin portal is built yet; send admins to the Dentist
-      // portal (superset access) rather than a 404. Revisit once an Admin
-      // portal exists.
-      return "/dashboard";
+      return "/admin/dashboard";
     default:
       return "/login";
   }

@@ -11,6 +11,7 @@ import { RecentTransactionsList } from "@/components/dentist/RecentTransactionsL
 import { requirePageRole } from "@/lib/auth/require-portal";
 import { billingSummary, cashflowTrend, outstandingByAge, listInvoices } from "@/lib/data/billing";
 import { formatCentsAsCurrency } from "@/lib/billing-format";
+import { clinicTimeZone } from "@/lib/data/organization";
 
 export const metadata: Metadata = {
   title: "Billing",
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
 
 export default async function HygienistBillingDashboardPage() {
   const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
+  const timeZone = await clinicTimeZone(session.user.organizationId);
   const { organizationId } = session.user;
 
   const [summary, trend, byAge, invoices] = await Promise.all([
@@ -58,8 +60,8 @@ export default async function HygienistBillingDashboardPage() {
         ]}
       />
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
+        <Card className="flex h-full flex-col lg:col-span-2">
           <CardHeader>
             <CardTitle>Cashflow Trend</CardTitle>
           </CardHeader>
@@ -68,18 +70,18 @@ export default async function HygienistBillingDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="flex h-full flex-col">
           <CardHeader>
             <CardTitle>Collection Rate</CardTitle>
           </CardHeader>
-          <CardContent className="flex items-center justify-center">
+          <CardContent className="flex flex-1 items-center justify-center">
             <CollectionRateRing percent={summary.collectionRate} />
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-        <Card>
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
+        <Card className="flex h-full flex-col">
           <CardHeader>
             <CardTitle>Outstanding by Age</CardTitle>
           </CardHeader>
@@ -88,12 +90,12 @@ export default async function HygienistBillingDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="flex h-full flex-col">
           <CardHeader>
             <CardTitle>Recent Transactions</CardTitle>
           </CardHeader>
           <CardContent>
-            <RecentTransactionsList invoices={recent} basePath="/hygienist" />
+            <RecentTransactionsList invoices={recent} basePath="/hygienist" timeZone={timeZone} />
           </CardContent>
         </Card>
       </div>

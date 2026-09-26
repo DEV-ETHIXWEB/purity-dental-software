@@ -1,3 +1,4 @@
+import type { UserPresence } from "@/generated/prisma/client";
 import type { ShellIconKey } from "./icon-map";
 
 /** A single primary-navigation entry in the portal sidebar. */
@@ -13,6 +14,8 @@ export interface ShellUser {
   avatarUrl?: string;
   /** Human-readable role label shown in the sidebar's account area (e.g. "Dentist"). */
   role?: string;
+  /** Available / away. Omit for the Patient portal, which has no presence concept. */
+  presence?: UserPresence | null;
 }
 
 /**
@@ -78,4 +81,11 @@ export interface ShellConfig {
   hasUnreadNotifications?: boolean;
   /** Rows for the top bar's notification popup. Empty renders an honest empty state. */
   notifications?: ShellNotification[];
+  /**
+   * The practice's IANA timezone (`Organization.timezone`). Every appointment
+   * time and record date inside this portal renders in it, so a clinic's own
+   * staff see the clinic's clock wherever they happen to be signed in from.
+   * Consumed by Client Components via `useClinicTimeZone()`.
+   */
+  timeZone: string;
 }

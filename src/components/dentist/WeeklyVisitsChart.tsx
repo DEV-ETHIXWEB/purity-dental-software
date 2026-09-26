@@ -26,12 +26,28 @@ export function WeeklyVisitsChart({ data }: WeeklyVisitsChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const max = Math.max(...data.map((d) => d.count), 1);
+  const isEmpty = data.every((d) => d.count === 0);
 
   const width = 100 * data.length;
   const height = 100;
   const barGapRatio = 0.28;
   const barWidth = 100 * (1 - barGapRatio);
   const cornerRadius = 6;
+
+  /*
+   * With nothing booked this chart used to render the Mon-Sun axis and
+   * nothing else — no bars, no message — which reads as a chart that failed
+   * to load rather than a quiet week. Every other card on these dashboards
+   * has a real empty state; this is its one.
+   */
+  if (isEmpty) {
+    return (
+      <div className="flex h-40 flex-col items-center justify-center gap-1 rounded-[var(--radius-lg)] border border-dashed border-border text-center">
+        <p className="text-sm font-medium text-text-primary">No visits booked this week</p>
+        <p className="text-xs text-text-secondary">Bookings will appear here as the week fills up.</p>
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -5,18 +5,16 @@ import { Send, BellRing } from "lucide-react";
 import { ChatIconFilled } from "@/components/ui/icons/purity-icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import { VisuallyHiddenLabel } from "@/components/ui/Input";
 import { patientFullName } from "@/lib/patient-format";
 import type { Patient, Message } from "@/generated/prisma/client";
 import { cn } from "@/lib/cn";
+import { formatClinicDateTime } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
-function formatMessageTime(date: Date) {
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+function formatMessageTime(date: Date, timeZone: string) {
+  return formatClinicDateTime(date, timeZone);
 }
 
 export interface MessageThreadProps {
@@ -30,6 +28,7 @@ export interface MessageThreadProps {
 
 /** Message bubble thread + composer for a single conversation. Sending persists via `onSend`. */
 export function MessageThread({ patient, messages, currentUserName, onSend, onSendRecallAlert }: MessageThreadProps) {
+  const timeZone = useClinicTimeZone();
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const listEndRef = useRef<HTMLDivElement>(null);
@@ -64,6 +63,17 @@ export function MessageThread({ patient, messages, currentUserName, onSend, onSe
             <p className="truncate text-xs text-text-secondary">{patient.phone}</p>
           </div>
         </div>
+        {/*
+          * Staff can always write here, but a patient whose messaging the
+          * front desk hasn't enabled has no way to answer. Said plainly in
+          * the header so nobody sends a question and waits on a reply that
+          * can never arrive.
+          */}
+        {!patient.canMessageCareTeam && (
+          <Badge tone="neutral" className="shrink-0">
+            Can&apos;t reply
+          </Badge>
+        )}
         {isOverdue && (
           <Button variant="outline" size="sm" onClick={onSendRecallAlert}>
             <BellRing className="h-4 w-4" aria-hidden="true" />
@@ -92,7 +102,7 @@ export function MessageThread({ patient, messages, currentUserName, onSend, onSe
                 >
                   <span className="mb-1 text-xs text-text-secondary">
                     {isProvider ? currentUserName : name} ·{" "}
-                    {formatMessageTime(message.sentAt)}
+                    {formatMessageTime(message.sentAt, timeZone)}
                   </span>
                   <div
                     className={cn(

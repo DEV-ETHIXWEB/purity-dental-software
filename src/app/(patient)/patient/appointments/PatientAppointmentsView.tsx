@@ -178,6 +178,9 @@ export function PatientAppointmentsView({
 
       <CancelAppointmentModal
         appointment={cancelTarget}
+        // Reuses the same grouping the list rendered, so the dialog can never
+        // describe a visit differently from the section it was opened from.
+        isMissed={cancelTarget !== null && overdue.some((a) => a.id === cancelTarget.id)}
         onClose={() => setCancelTarget(null)}
         onConfirm={handleCancelConfirmed}
       />

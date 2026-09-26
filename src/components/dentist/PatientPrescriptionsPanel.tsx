@@ -10,6 +10,8 @@ import { cn } from "@/lib/cn";
 import { addPrescription, setPrescriptionStatus } from "@/lib/actions/clinical-records";
 import type { PrescriptionWithPrescriber } from "@/lib/data/clinical-records";
 import type { PrescriptionStatus } from "@/generated/prisma/client";
+import { formatClinicDate } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 export interface PatientPrescriptionsPanelProps {
   patientId: string;
@@ -42,6 +44,7 @@ export function PatientPrescriptionsPanel({
 }: PatientPrescriptionsPanelProps) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
+  const timeZone = useClinicTimeZone();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -193,7 +196,7 @@ export function PatientPrescriptionsPanel({
                 </p>
                 <p className="truncate text-xs text-text-secondary">
                   {rx.prescriber?.name ? `${rx.prescriber.name} · ` : ""}
-                  {rx.prescribedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  {formatClinicDate(rx.prescribedAt, timeZone)}
                 </p>
               </div>
               <Badge tone={STATUS_TONE[rx.status]} className="shrink-0">

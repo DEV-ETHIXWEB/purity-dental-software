@@ -18,6 +18,7 @@ import { getPatientById } from "@/lib/data/patients";
 import { patientFullName } from "@/lib/patient-format";
 import { treatmentPlanForPatient, perioChartForPatient } from "@/lib/data/treatment";
 import { patientRecords } from "@/lib/data/clinical-records";
+import { clinicTimeZone } from "@/lib/data/organization";
 
 export async function generateMetadata({
   params,
@@ -39,6 +40,7 @@ export default async function PatientProfilePage({
   params,
 }: PageProps<"/patients/[patientId]">) {
   const session = await requirePageRole(["DENTIST", "ADMIN"]);
+  const timeZone = await clinicTimeZone(session.user.organizationId);
   const { patientId } = await params;
   const patient = await getPatientById(session.user.organizationId, patientId);
   if (!patient) notFound();
@@ -119,7 +121,7 @@ export default async function PatientProfilePage({
                     <h3 className={PANEL_HEADING}>Treatment Plan</h3>
                     <TabLink
                       value="treatment-plan"
-                      className="group/link inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-brand-blue-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+                      className="touch-link group/link gap-1.5 rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-brand-blue-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
                     >
                       Open plan
                       <ArrowRight
@@ -136,15 +138,15 @@ export default async function PatientProfilePage({
                     <h3 className={PANEL_HEADING}>Perio chart</h3>
                     <TabLink
                       value="documents"
-                      className="rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-brand-blue-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+                      className="touch-link rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-brand-blue-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
                     >
                       {records.documents.length} docs · {records.prescriptions.length} Rx
                     </TabLink>
                   </div>
-                  <PerioChartCard entry={perioEntry} />
+                  <PerioChartCard entry={perioEntry} timeZone={timeZone} />
                   <TabLink
                     value="perio-chart"
-                    className="group/link inline-flex items-center gap-1.5 self-start rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-brand-blue-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+                    className="touch-link group/link gap-1.5 self-start rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-brand-blue-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
                   >
                     Open perio chart
                     <ArrowRight
@@ -165,7 +167,7 @@ export default async function PatientProfilePage({
             </TabsContent>
 
             <TabsContent value="perio-chart" className="min-h-72">
-              <PerioChartCard entry={perioEntry} />
+              <PerioChartCard entry={perioEntry} timeZone={timeZone} />
             </TabsContent>
 
             <TabsContent value="documents" className="min-h-72">

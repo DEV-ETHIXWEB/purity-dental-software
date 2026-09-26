@@ -10,6 +10,8 @@ import { cn } from "@/lib/cn";
 import { uploadPatientDocument, deletePatientDocument } from "@/lib/actions/clinical-records";
 import type { DocumentSummary } from "@/lib/data/clinical-records";
 import type { DocumentKind } from "@/generated/prisma/client";
+import { formatClinicDate } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 export interface PatientDocumentsPanelProps {
   patientId: string;
@@ -50,6 +52,7 @@ const SELECT_CLASSES =
  * not a public URL.
  */
 export function PatientDocumentsPanel({ patientId, documents, canManage = true }: PatientDocumentsPanelProps) {
+  const timeZone = useClinicTimeZone();
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -213,7 +216,7 @@ export function PatientDocumentsPanel({ patientId, documents, canManage = true }
                   <p className="truncate text-xs text-text-secondary">
                     {formatSize(doc.sizeBytes)}
                     {doc.uploadedBy?.name ? ` · ${doc.uploadedBy.name}` : ""} ·{" "}
-                    {doc.uploadedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    {formatClinicDate(doc.uploadedAt, timeZone)}
                   </p>
                 </div>
                 <Badge tone={KIND_TONE[doc.kind]} className="shrink-0">

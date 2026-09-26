@@ -58,16 +58,25 @@ export const patientRegistrationSchema = z.object({
     .trim()
     .min(1, "Email is required.")
     .email("Enter a valid email address."),
+  /*
+   * Optional, both of them. These were required, which made a self-pay
+   * patient impossible to register at all — and the schema has always had
+   * both columns nullable, so the form was stricter than the data model it
+   * writes to. Empty still normalises to undefined so a blank field stores
+   * NULL rather than "".
+   */
   insuranceProvider: z
     .string()
     .trim()
-    .min(1, "Insurance provider is required.")
-    .max(80, "Insurance provider name is too long."),
+    .max(80, "Insurance provider name is too long.")
+    .optional()
+    .transform((v) => (v ? v : undefined)),
   insurancePlan: z
     .string()
     .trim()
-    .min(1, "Insurance plan is required.")
-    .max(80, "Insurance plan name is too long."),
+    .max(80, "Insurance plan name is too long.")
+    .optional()
+    .transform((v) => (v ? v : undefined)),
 });
 
 export type PatientRegistrationInput = z.infer<typeof patientRegistrationSchema>;

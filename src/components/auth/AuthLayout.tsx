@@ -35,7 +35,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           className="relative z-10 mb-8 rounded-[var(--radius-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] lg:hidden"
           aria-label="Purity home"
         >
-          <Logo height={40} />
+          <Logo height={44} />
         </Link>
 
         <div className="relative z-10 w-full max-w-[26rem]">{children}</div>

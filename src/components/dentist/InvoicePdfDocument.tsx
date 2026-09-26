@@ -2,6 +2,7 @@ import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
 import { patientFullName, patientAge } from "@/lib/patient-format";
 import type { InvoiceWithProvider } from "@/lib/data/billing";
+import { formatClinicDate } from "@/lib/datetime";
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#111827" },
@@ -51,7 +52,14 @@ const styles = StyleSheet.create({
  * Adjustment/Tax/Total Due breakdown shown on the detail page itself, so the
  * two never disagree.
  */
-export function InvoicePdfDocument({ invoice }: { invoice: InvoiceWithProvider }) {
+export function InvoicePdfDocument({
+  invoice,
+  timeZone,
+}: {
+  invoice: InvoiceWithProvider;
+  /** The practice's timezone — this renders in a Route Handler, outside any portal shell. */
+  timeZone: string;
+}) {
   const subtotalCents = invoice.lineItems.reduce((sum, li) => sum + li.quantity * li.unitPriceCents, 0);
 
   return (
@@ -69,11 +77,11 @@ export function InvoicePdfDocument({ invoice }: { invoice: InvoiceWithProvider }
             </View>
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Issued: </Text>
-              <Text>{invoice.issuedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</Text>
+              <Text>{formatClinicDate(invoice.issuedAt, timeZone)}</Text>
             </View>
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Due: </Text>
-              <Text>{invoice.dueAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</Text>
+              <Text>{formatClinicDate(invoice.dueAt, timeZone)}</Text>
             </View>
           </View>
         </View>

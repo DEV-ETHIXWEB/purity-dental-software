@@ -112,14 +112,14 @@ export function NotificationsMenu({ notifications, viewAllHref, hasUnread }: Not
           role="dialog"
           aria-label="Notifications"
           className={cn(
-            "animate-scale-in absolute z-40 mt-2 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-popover",
+            "animate-scale-in glass-panel absolute z-40 mt-2 overflow-hidden rounded-[var(--radius-lg)]",
             // Phone: pin to both screen edges so it can never overflow.
             "fixed inset-x-3 top-14 origin-top",
             // Tablet up: a normal panel hanging under the bell.
             "sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:w-[22rem] sm:origin-top-right",
           )}
         >
-          <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+          <div className="flex items-center justify-between gap-2 border-b border-white/50 px-4 py-3">
             <p className="text-sm font-semibold text-text-primary">Notifications</p>
             {unreadCount > 0 && (
               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-info-bg px-1.5 text-xs font-semibold text-[var(--color-brand-blue-text)]">
@@ -128,7 +128,7 @@ export function NotificationsMenu({ notifications, viewAllHref, hasUnread }: Not
             )}
           </div>
 
-          <div className="flex items-center gap-1 border-b border-border px-2 py-2">
+          <div className="flex items-center gap-1 border-b border-white/50 px-2 py-2">
             {(["all", "unread"] as const).map((value) => (
               <button
                 key={value}
@@ -139,8 +139,8 @@ export function NotificationsMenu({ notifications, viewAllHref, hasUnread }: Not
                   "rounded-[var(--radius-md)] px-3 py-1.5 text-xs font-medium transition-colors duration-200 ease-out",
                   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]",
                   filter === value
-                    ? "bg-surface-muted text-text-primary"
-                    : "text-text-secondary hover:bg-surface-muted hover:text-text-primary",
+                    ? "bg-surface/70 text-text-primary shadow-card"
+                    : "text-text-secondary hover:bg-surface/50 hover:text-text-primary",
                 )}
               >
                 {value === "all" ? "All" : `Unread${unreadCount > 0 ? ` (${unreadCount})` : ""}`}
@@ -156,7 +156,7 @@ export function NotificationsMenu({ notifications, viewAllHref, hasUnread }: Not
                   : "Nothing unread right now."}
               </p>
             ) : (
-              <ul className="divide-y divide-border">
+              <ul className="glass-divide divide-y divide-transparent">
                 {visible.map((item) => {
                   const Icon = KIND_ICON[item.kind];
                   return (
@@ -165,8 +165,8 @@ export function NotificationsMenu({ notifications, viewAllHref, hasUnread }: Not
                         href={item.href}
                         onClick={() => setOpen(false)}
                         className={cn(
-                          "flex items-start gap-3 px-4 py-3 transition-colors duration-200 ease-out",
-                          "hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-blue)]",
+                          "glass-row flex items-start gap-3 px-4 py-3 transition-colors duration-200 ease-out",
+                          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-blue)]",
                         )}
                       >
                         <span
@@ -198,7 +198,7 @@ export function NotificationsMenu({ notifications, viewAllHref, hasUnread }: Not
           <Link
             href={viewAllHref}
             onClick={() => setOpen(false)}
-            className="group/all flex items-center justify-center gap-1.5 border-t border-border px-4 py-3 text-sm font-medium text-[var(--color-brand-blue-text)] transition-colors duration-200 ease-out hover:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-blue)]"
+            className="group/all glass-row flex items-center justify-center gap-1.5 border-t border-white/50 px-4 py-3 text-sm font-medium text-[var(--color-brand-blue-text)] transition-colors duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-blue)]"
           >
             View all notifications
             <ArrowRight

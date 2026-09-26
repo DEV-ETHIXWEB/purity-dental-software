@@ -5,6 +5,7 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { patientFullName } from "@/lib/patient-format";
 import type { AppointmentWithPatientAndProvider } from "@/lib/data/appointments";
 import type { AppointmentStatus } from "@/generated/prisma/client";
+import { formatClinicTime } from "@/lib/datetime";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   SCHEDULED: "Scheduled",
@@ -27,12 +28,18 @@ const STATUS_TONE: Record<AppointmentStatus, BadgeTone> = {
 };
 
 /** Today's visits across the whole practice, with per-patient check-in status — the receptionist's front-desk worklist. */
-export function TodaysVisitsList({ appointments }: { appointments: AppointmentWithPatientAndProvider[] }) {
+export function TodaysVisitsList({
+  appointments,
+  timeZone,
+}: {
+  appointments: AppointmentWithPatientAndProvider[];
+  timeZone: string;
+}) {
   const sorted = [...appointments].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 
   if (sorted.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-border-strong py-12 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-border-strong py-12 text-center">
         <CalendarIconFilled className="h-8 w-8" aria-hidden="true" />
         <p className="text-sm font-medium text-text-primary">No visits scheduled today</p>
         <p className="max-w-xs text-xs text-text-secondary">
@@ -43,13 +50,10 @@ export function TodaysVisitsList({ appointments }: { appointments: AppointmentWi
   }
 
   return (
-    <ul className="divide-y divide-border">
+    <ul className="flex-1 divide-y divide-border">
       {sorted.map((appt) => {
         const patient = appt.patient;
-        const time = appt.startTime.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-        });
+        const time = formatClinicTime(appt.startTime, timeZone);
         return (
           <li key={appt.id} className="flex items-center gap-3 py-2.5">
             <div className="w-16 shrink-0 text-sm font-medium text-text-secondary">{time}</div>
@@ -57,7 +61,7 @@ export function TodaysVisitsList({ appointments }: { appointments: AppointmentWi
             <div className="min-w-0 flex-1">
               <Link
                 href={`/receptionist/patients/${patient.id}`}
-                className="truncate text-sm font-medium text-text-primary hover:text-[var(--color-brand-blue-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
+                className="touch-link w-full truncate text-sm font-medium text-text-primary hover:text-[var(--color-brand-blue-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
               >
                 {patientFullName(patient)}
               </Link>
@@ -65,7 +69,9 @@ export function TodaysVisitsList({ appointments }: { appointments: AppointmentWi
                 {appt.procedureType} · {appt.provider.name}
               </p>
             </div>
-            <Badge tone={STATUS_TONE[appt.status]}>{STATUS_LABEL[appt.status]}</Badge>
+            <Badge tone={STATUS_TONE[appt.status]} className="shrink-0">
+              {STATUS_LABEL[appt.status]}
+            </Badge>
           </li>
         );
       })}

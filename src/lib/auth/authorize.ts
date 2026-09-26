@@ -1,6 +1,7 @@
 import "server-only";
 import { UserRole } from "@/generated/prisma/client";
 import { getCurrentSession, type CurrentSession } from "@/lib/auth/session";
+import { hasPermission, type PermissionKey } from "@/lib/auth/permissions";
 
 /**
  * Server-enforced RBAC helpers.
@@ -48,6 +49,32 @@ export async function requireRole(
 ): Promise<CurrentSession> {
   const session = await requireSession();
   if (!allowedRoles.includes(session.user.role)) {
+    throw new AuthorizationError(
+      "You don't have permission to perform this action.",
+      "FORBIDDEN",
+    );
+  }
+  return session;
+}
+
+/**
+ * Require a signed-in user who holds `permission` — their role's default set
+ * with their own overrides applied.
+ *
+ * Prefer this over `requireRole` for anything an admin might reasonably want
+ * to delegate. A role list hard-codes the answer to "who may do this?" at
+ * every call site, so giving one receptionist billing access would mean
+ * editing every billing action; a permission check asks the question once
+ * and lets the admin answer it per person.
+ *
+ * `requireRole` is still right where the gate genuinely is the role — portal
+ * membership, or an action that is meaningless for another role.
+ */
+export async function requirePermission(
+  permission: PermissionKey,
+): Promise<CurrentSession> {
+  const session = await requireSession();
+  if (!hasPermission(session.user, permission)) {
     throw new AuthorizationError(
       "You don't have permission to perform this action.",
       "FORBIDDEN",

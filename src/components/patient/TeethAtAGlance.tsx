@@ -173,6 +173,22 @@ const STATE_DETAIL: Record<ToothState, string> = {
   planned: "stroke-[var(--color-brand-blue)]/50",
 };
 
+/**
+ * What a patient would call each tooth. "Wisdom tooth" rather than "third
+ * molar" — this arch is the patient-facing one, and the clinical
+ * `ToothChart` is where the formal name belongs.
+ */
+const TYPE_LABEL: Record<ToothType, string> = {
+  central: "Central",
+  lateral: "Lateral",
+  canine: "Canine",
+  premolar1: "1st premolar",
+  premolar2: "2nd premolar",
+  molar1: "1st molar",
+  molar2: "2nd molar",
+  molar3: "Wisdom",
+};
+
 const STATE_LABEL: Record<ToothState, string> = {
   healthy: "no treatment planned",
   treated: "treatment completed",
@@ -339,6 +355,66 @@ function layoutArch(
   });
 }
 
+/**
+ * Pushes stacked callout labels apart so two teeth close together on the
+ * arch don't end up with overlapping text, then slides the whole column
+ * back inside the frame if spreading pushed it past the bottom.
+ */
+function spreadLabels(ys: number[], minGap: number, min: number, max: number): number[] {
+  const out = [...ys];
+  for (let i = 1; i < out.length; i++) {
+    if (out[i] - out[i - 1] < minGap) out[i] = out[i - 1] + minGap;
+  }
+  const overflow = out[out.length - 1] - max;
+  if (overflow > 0) for (let i = 0; i < out.length; i++) out[i] -= overflow;
+  if (out[0] < min) {
+    const shift = min - out[0];
+    for (let i = 0; i < out.length; i++) out[i] += shift;
+  }
+  return out;
+}
+
+interface Callout {
+  tooth: PlacedTooth;
+  /** Where the leader meets the tooth — just off its outer face. */
+  fromX: number;
+  fromY: number;
+  /** Where the leader ends and the text begins. */
+  toX: number;
+  toY: number;
+  side: "left" | "right";
+}
+
+/** Leader lines from each flagged tooth out to a label in the margin. */
+function buildCallouts(placed: PlacedTooth[]): Callout[] {
+  const flagged = placed.filter((t) => t.state !== "healthy");
+
+  return (["left", "right"] as const).flatMap((side) => {
+    const onSide = flagged
+      .filter((t) => (side === "left" ? t.x < 120 : t.x >= 120))
+      .sort((a, b) => a.y - b.y);
+    if (onSide.length === 0) return [];
+
+    const labelX = side === "left" ? -10 : 250;
+    const ys = spreadLabels(onSide.map((t) => t.y), 30, 8, 232);
+
+    return onSide.map((tooth, i) => {
+      // The crown's -y axis faces outward; after `rotation` that direction
+      // is (sin, -cos), so this lands the leader just clear of the enamel.
+      const rad = (tooth.rotation * Math.PI) / 180;
+      const reach = tooth.h / 2 + 3;
+      return {
+        tooth,
+        fromX: tooth.x + Math.sin(rad) * reach,
+        fromY: tooth.y - Math.cos(rad) * reach,
+        toX: labelX,
+        toY: ys[i],
+        side,
+      };
+    });
+  });
+}
+
 export interface TeethAtAGlanceProps {
   items: TreatmentPlanItem[];
 }
@@ -361,12 +437,16 @@ export function TeethAtAGlance({ items }: TeethAtAGlanceProps) {
 
   const needsAttention = placed.filter((t) => t.state === "active" || t.state === "planned");
   const healthyCount = placed.length - needsAttention.length;
+  const callouts = buildCallouts(placed);
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="relative mx-auto aspect-square w-full max-w-[280px]">
+      {/* The frame is wider than the arch so the callouts have a margin to
+          sit in, and stays symmetric about the arch's centre (120,120) so
+          the headline overlay below still lands in the middle. */}
+      <div className="relative mx-auto aspect-[424/268] w-full max-w-[420px]">
         <svg
-          viewBox="0 0 240 240"
+          viewBox="-92 -14 424 268"
           className="animate-pop-in h-full w-full"
           role="img"
           aria-label={`Dental arch: ${healthyCount} of ${placed.length} teeth have no open treatment.`}
@@ -378,6 +458,30 @@ export function TeethAtAGlance({ items }: TeethAtAGlanceProps) {
               <stop offset="100%" stopColor="#e8eef6" />
             </linearGradient>
           </defs>
+
+          {/* Drawn before the teeth so a leader never crosses over enamel. */}
+          {callouts.map((callout) => (
+            <g key={`leader-${callout.tooth.number}`} aria-hidden="true">
+              <polyline
+                points={`${callout.fromX.toFixed(1)},${callout.fromY.toFixed(1)} ${(callout.side === "left" ? callout.toX + 12 : callout.toX - 12).toFixed(1)},${callout.toY.toFixed(1)} ${callout.toX.toFixed(1)},${callout.toY.toFixed(1)}`}
+                fill="none"
+                strokeWidth={0.9}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="stroke-border-strong"
+              />
+              <circle
+                cx={callout.fromX.toFixed(1)}
+                cy={callout.fromY.toFixed(1)}
+                r={1.6}
+                className={
+                  callout.tooth.state === "treated"
+                    ? "fill-[var(--color-brand-teal)]"
+                    : "fill-[var(--color-brand-blue)]"
+                }
+              />
+            </g>
+          ))}
 
           {placed.map((tooth) => (
             <g
@@ -400,6 +504,25 @@ export function TeethAtAGlance({ items }: TeethAtAGlanceProps) {
                 className={cn("transition-colors duration-300 ease-out", STATE_DETAIL[tooth.state])}
               />
             </g>
+          ))}
+
+          {callouts.map((callout) => (
+            <text
+              key={`label-${callout.tooth.number}`}
+              x={callout.side === "left" ? callout.toX - 4 : callout.toX + 4}
+              y={callout.toY}
+              textAnchor={callout.side === "left" ? "end" : "start"}
+              className="fill-text-primary text-[10px] font-semibold"
+            >
+              {TYPE_LABEL[callout.tooth.type]}
+              <tspan
+                x={callout.side === "left" ? callout.toX - 4 : callout.toX + 4}
+                dy="10"
+                className="fill-text-secondary text-[9px] font-normal"
+              >
+                {`#${callout.tooth.number}`}
+              </tspan>
+            </text>
           ))}
         </svg>
 

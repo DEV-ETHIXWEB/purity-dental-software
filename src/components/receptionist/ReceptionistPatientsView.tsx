@@ -2,13 +2,16 @@ import Link from "next/link";
 import { UserPlus } from "lucide-react";
 import { PatientsTable } from "@/components/dentist/PatientsTable";
 import type { Patient } from "@/generated/prisma/client";
+import type { AssignedProvider } from "@/lib/data/patients";
 
 export function ReceptionistPatientsView({
   patients,
   initialQuery,
+  providers,
 }: {
   patients: Patient[];
   initialQuery?: string;
+  providers: Map<string, AssignedProvider>;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -28,7 +31,12 @@ export function ReceptionistPatientsView({
         </Link>
       </div>
 
-      <PatientsTable patients={patients} basePath="/receptionist" initialQuery={initialQuery} />
+      <PatientsTable
+        patients={patients}
+        basePath="/receptionist"
+        initialQuery={initialQuery}
+        providers={providers}
+      />
     </div>
   );
 }

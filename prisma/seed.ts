@@ -2,6 +2,11 @@ import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import {
+  DEFAULT_CLINIC_TIMEZONE,
+  clinicParts,
+  instantFromClinicWallClock,
+} from "../src/lib/datetime";
 
 /**
  * Dev-only seed script: one Organization, one User per role, and the full
@@ -193,19 +198,71 @@ const PATIENTS = [
 // `additionalPracticeAppointments`
 // ---------------------------------------------------------------------------
 
+/**
+ * Builds an appointment slot relative to the day the seed is run.
+ *
+ * Appointment times used to be hardcoded ISO instants anchored to August
+ * 2026. That works on the day it is written and rots immediately after: by
+ * late September every seeded visit was in the past, so "today" was empty on
+ * every dashboard, the Upcoming tabs showed nothing, the receptionist board
+ * was entirely Open slots, and the whole app read as broken. Anchoring to
+ * `new Date()` means a freshly seeded database always has a believable
+ * today, a future and a history, no matter when it is run.
+ *
+ * Hours are clinic wall-clock (America/New_York), not UTC — a "9:00 AM"
+ * appointment has to render as 9:00 AM on the schedule board, which means
+ * going through `instantFromClinicWallClock` rather than writing a fixed Z
+ * time that drifts an hour across a DST boundary.
+ */
+function clinicSlot(dayOffset: number, hour: number, minute: number, minutes: number) {
+  const today = clinicParts(new Date(), DEFAULT_CLINIC_TIMEZONE);
+  // Day arithmetic on a UTC midnight anchor so month and year roll over.
+  const day = new Date(Date.UTC(today.year, today.month - 1, today.day + dayOffset));
+  const start = instantFromClinicWallClock(
+    day.getUTCFullYear(),
+    day.getUTCMonth() + 1,
+    day.getUTCDate(),
+    hour,
+    minute,
+    DEFAULT_CLINIC_TIMEZONE,
+  );
+  return {
+    startTime: start.toISOString(),
+    endTime: new Date(start.getTime() + minutes * 60_000).toISOString(),
+  };
+}
+
 const APPOINTMENTS = [
-  { id: "appt_1", patientId: "pat_michael_lee", providerId: PROVIDER_AVERY, procedureType: "Routine Cleaning", status: "CONFIRMED" as const, startTime: "2026-08-24T13:00:00.000Z", endTime: "2026-08-24T13:45:00.000Z" },
-  { id: "appt_2", patientId: "pat_ava_nguyen", providerId: PROVIDER_AVERY, procedureType: "Consultation", status: "SCHEDULED" as const, startTime: "2026-08-24T15:15:00.000Z", endTime: "2026-08-24T15:45:00.000Z" },
-  { id: "appt_3", patientId: "pat_james_carter", providerId: PROVIDER_AVERY, procedureType: "Crown Fitting", status: "CONFIRMED" as const, startTime: "2026-08-25T09:30:00.000Z", endTime: "2026-08-25T10:30:00.000Z" },
-  { id: "appt_4", patientId: "pat_sarah_johnson", providerId: PROVIDER_AVERY, procedureType: "Root Canal Follow-up", status: "SCHEDULED" as const, startTime: "2026-08-27T14:00:00.000Z", endTime: "2026-08-27T15:00:00.000Z" },
-  { id: "appt_5", patientId: "pat_ethan_walker", providerId: PROVIDER_AVERY, procedureType: "Filling", status: "SCHEDULED" as const, startTime: "2026-08-28T11:00:00.000Z", endTime: "2026-08-28T11:45:00.000Z" },
-  { id: "appt_6", patientId: "pat_emma_williams", providerId: PROVIDER_AVERY, procedureType: "Whitening", status: "SCHEDULED" as const, startTime: "2026-08-31T10:00:00.000Z", endTime: "2026-08-31T11:00:00.000Z" },
-  { id: "appt_7", patientId: "pat_olivia_martinez", providerId: PROVIDER_AVERY, procedureType: "Cleaning", status: "COMPLETED" as const, startTime: "2026-08-20T14:00:00.000Z", endTime: "2026-08-20T14:45:00.000Z", completedOnTime: true },
-  { id: "appt_8", patientId: "pat_daniel_brooks", providerId: PROVIDER_AVERY, procedureType: "Extraction", status: "CANCELLED" as const, startTime: "2026-08-21T09:00:00.000Z", endTime: "2026-08-21T09:45:00.000Z" },
-  { id: "appt_rc_1", patientId: "pat_emma_williams", providerId: PROVIDER_KAPOOR, procedureType: "New Patient Exam", status: "CHECKED_IN" as const, startTime: "2026-08-24T14:30:00.000Z", endTime: "2026-08-24T15:15:00.000Z" },
-  { id: "appt_rc_2", patientId: "pat_daniel_brooks", providerId: PROVIDER_REYES, procedureType: "Periodontal Maintenance", status: "NO_SHOW" as const, startTime: "2026-08-24T11:00:00.000Z", endTime: "2026-08-24T11:45:00.000Z" },
-  { id: "appt_rc_3", patientId: "pat_olivia_martinez", providerId: PROVIDER_REYES, procedureType: "Cleaning", status: "CHECKED_IN" as const, startTime: "2026-08-24T10:00:00.000Z", endTime: "2026-08-24T10:45:00.000Z" },
-  { id: "appt_rc_4", patientId: "pat_ava_nguyen", providerId: PROVIDER_KAPOOR, procedureType: "Filling", status: "SCHEDULED" as const, startTime: "2026-08-25T13:00:00.000Z", endTime: "2026-08-25T13:45:00.000Z" },
+  // --- Today: a full front-desk day across all three providers -------------
+  { id: "appt_1", patientId: "pat_michael_lee", providerId: PROVIDER_AVERY, procedureType: "Routine Cleaning", status: "CHECKED_IN" as const, ...clinicSlot(0, 9, 0, 45) },
+  { id: "appt_rc_3", patientId: "pat_olivia_martinez", providerId: PROVIDER_REYES, procedureType: "Cleaning", status: "IN_PROGRESS" as const, ...clinicSlot(0, 10, 0, 45) },
+  { id: "appt_rc_1", patientId: "pat_emma_williams", providerId: PROVIDER_KAPOOR, procedureType: "New Patient Exam", status: "CONFIRMED" as const, ...clinicSlot(0, 11, 0, 45) },
+  { id: "appt_3", patientId: "pat_james_carter", providerId: PROVIDER_AVERY, procedureType: "Crown Fitting", status: "CONFIRMED" as const, ...clinicSlot(0, 13, 0, 60) },
+  { id: "appt_rc_2", patientId: "pat_ava_nguyen", providerId: PROVIDER_REYES, procedureType: "Periodontal Maintenance", status: "SCHEDULED" as const, ...clinicSlot(0, 14, 30, 45) },
+  { id: "appt_5", patientId: "pat_ethan_walker", providerId: PROVIDER_AVERY, procedureType: "Filling", status: "SCHEDULED" as const, ...clinicSlot(0, 16, 0, 45) },
+
+  // --- Upcoming ------------------------------------------------------------
+  // Sarah Johnson is the patient-portal login, so she needs a visit ahead of
+  // her for the Patient dashboard and Appointments page to have content.
+  { id: "appt_4", patientId: "pat_sarah_johnson", providerId: PROVIDER_AVERY, procedureType: "Root Canal Follow-up", status: "CONFIRMED" as const, ...clinicSlot(1, 9, 30, 60) },
+  { id: "appt_rc_5", patientId: "pat_daniel_brooks", providerId: PROVIDER_REYES, procedureType: "Periodontal Maintenance", status: "SCHEDULED" as const, ...clinicSlot(2, 11, 0, 45) },
+  { id: "appt_6", patientId: "pat_emma_williams", providerId: PROVIDER_AVERY, procedureType: "Whitening", status: "SCHEDULED" as const, ...clinicSlot(3, 14, 0, 60) },
+  { id: "appt_rc_4", patientId: "pat_michael_lee", providerId: PROVIDER_KAPOOR, procedureType: "Filling", status: "SCHEDULED" as const, ...clinicSlot(6, 10, 0, 45) },
+  { id: "appt_rc_6", patientId: "pat_sarah_johnson", providerId: PROVIDER_REYES, procedureType: "Routine Cleaning", status: "SCHEDULED" as const, ...clinicSlot(9, 15, 0, 45) },
+
+  // --- History -------------------------------------------------------------
+  { id: "appt_7", patientId: "pat_olivia_martinez", providerId: PROVIDER_AVERY, procedureType: "Cleaning", status: "COMPLETED" as const, completedOnTime: true, ...clinicSlot(-3, 14, 0, 45) },
+  { id: "appt_rc_7", patientId: "pat_james_carter", providerId: PROVIDER_KAPOOR, procedureType: "Consultation", status: "COMPLETED" as const, completedOnTime: true, ...clinicSlot(-7, 9, 0, 30) },
+  { id: "appt_8", patientId: "pat_ethan_walker", providerId: PROVIDER_AVERY, procedureType: "Extraction", status: "CANCELLED" as const, ...clinicSlot(-12, 13, 0, 45) },
+  { id: "appt_rc_8", patientId: "pat_daniel_brooks", providerId: PROVIDER_REYES, procedureType: "Cleaning", status: "NO_SHOW" as const, ...clinicSlot(-18, 10, 0, 45) },
+  { id: "appt_rc_9", patientId: "pat_sarah_johnson", providerId: PROVIDER_AVERY, procedureType: "Consultation", status: "COMPLETED" as const, completedOnTime: false, ...clinicSlot(-30, 11, 0, 30) },
+
+  // --- Deliberately left unresolved ---------------------------------------
+  // Two past visits still sitting at SCHEDULED, so the "Needs attention"
+  // queue has something real to show. Two, not thirteen: the old absolute
+  // dates meant every seeded visit eventually landed here.
+  { id: "appt_2", patientId: "pat_ava_nguyen", providerId: PROVIDER_AVERY, procedureType: "Filling", status: "SCHEDULED" as const, ...clinicSlot(-2, 15, 0, 45) },
+  { id: "appt_rc_10", patientId: "pat_emma_williams", providerId: PROVIDER_KAPOOR, procedureType: "Whitening", status: "SCHEDULED" as const, ...clinicSlot(-5, 9, 30, 60) },
 ];
 
 // ---------------------------------------------------------------------------
@@ -443,7 +500,19 @@ async function main() {
     // seed run.
     await prisma.appointment.upsert({
       where: { id: a.id },
-      update: { completedOnTime: "completedOnTime" in a ? a.completedOnTime : null },
+      // Times and status are refreshed on re-run, not just created. The
+      // slots are relative to "today" (see `clinicSlot`), so an update that
+      // left `startTime` alone would pin an existing dev database to
+      // whenever it was first seeded — exactly the staleness this avoids.
+      update: {
+        patientId: a.patientId,
+        providerId: a.providerId,
+        procedureType: a.procedureType,
+        status: a.status,
+        completedOnTime: "completedOnTime" in a ? a.completedOnTime : null,
+        startTime: new Date(a.startTime),
+        endTime: new Date(a.endTime),
+      },
       create: {
         id: a.id,
         organizationId: organization.id,

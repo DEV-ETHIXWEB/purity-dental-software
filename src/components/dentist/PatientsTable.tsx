@@ -13,10 +13,16 @@ import {
   TableCell,
 } from "@/components/ui/Table";
 import { Avatar } from "@/components/ui/Avatar";
+import { cn } from "@/lib/cn";
 import { Input } from "@/components/ui/Input";
-import { PatientStatusBadge } from "@/components/dentist/PatientStatusBadge";
+import { PatientStatusBadge, PATIENT_STATUS_LABEL } from "@/components/dentist/PatientStatusBadge";
+import { PatientStatusMenu } from "@/components/dentist/PatientStatusMenu";
+import type { PatientStatus } from "@/generated/prisma/client";
+import type { AssignedProvider } from "@/lib/data/patients";
 import { patientFullName, patientAge } from "@/lib/patient-format";
 import type { Patient } from "@/generated/prisma/client";
+import { formatClinicDate, formatClinicDateShort } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 export interface PatientsTableProps {
   patients: Patient[];
@@ -24,18 +30,49 @@ export interface PatientsTableProps {
   basePath?: string;
   /** Seeds the search box from the top bar's `?q=` — see `TopBar.tsx`'s search form. */
   initialQuery?: string;
+  /**
+   * Who each patient is currently under, keyed by patient id. Pass it to add
+   * an "Assigned to" column — the front desk needs to know whose chair a
+   * patient belongs in, where a single clinician looking at their own list
+   * does not.
+   */
+  providers?: Map<string, AssignedProvider>;
 }
 
-export function PatientsTable({ patients, basePath = "", initialQuery = "" }: PatientsTableProps) {
+type StatusFilter = PatientStatus | "ALL";
+
+const FILTERS: StatusFilter[] = ["ACTIVE", "COMPLETED", "INACTIVE", "ALL"];
+
+export function PatientsTable({ patients, basePath = "", initialQuery = "", providers }: PatientsTableProps) {
+  const timeZone = useClinicTimeZone();
   const [query, setQuery] = useState(initialQuery);
+  /*
+   * Defaults to Active, so removing a patient actually removes them from the
+   * view staff live in. Completed and Archived are one click away rather than
+   * hidden — and every chip carries its count, so nobody has to wonder
+   * whether a missing patient was deleted.
+   */
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ACTIVE");
+
+  const counts = useMemo(() => {
+    const byStatus: Record<StatusFilter, number> = {
+      ACTIVE: 0,
+      COMPLETED: 0,
+      INACTIVE: 0,
+      ALL: patients.length,
+    };
+    for (const p of patients) byStatus[p.status] += 1;
+    return byStatus;
+  }, [patients]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return patients;
-    return patients.filter((p) =>
-      `${patientFullName(p)} ${p.email} ${p.phone}`.toLowerCase().includes(q),
-    );
-  }, [patients, query]);
+    return patients.filter((p) => {
+      if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
+      if (!q) return true;
+      return `${patientFullName(p)} ${p.email} ${p.phone}`.toLowerCase().includes(q);
+    });
+  }, [patients, query, statusFilter]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -57,6 +94,31 @@ export function PatientsTable({ patients, basePath = "", initialQuery = "" }: Pa
         </span>
       </div>
 
+      <div role="tablist" aria-label="Filter patients by status" className="flex flex-wrap gap-1">
+        {FILTERS.map((value) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={statusFilter === value}
+            onClick={() => setStatusFilter(value)}
+            className={cn(
+              // `inline-flex` + a 44px floor on phones: these are hand-rolled
+              // tabs rather than `TabsTrigger`, so they miss that component's
+              // touch floor.
+              "inline-flex items-center justify-center rounded-[var(--radius-md)] px-3 py-1.5 text-xs font-medium transition-colors duration-200 ease-out",
+              "min-h-11 sm:min-h-0",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]",
+              statusFilter === value
+                ? "bg-surface text-text-primary shadow-card"
+                : "text-text-secondary hover:bg-surface-muted hover:text-text-primary",
+            )}
+          >
+            {value === "ALL" ? "All" : PATIENT_STATUS_LABEL[value]} ({counts[value]})
+          </button>
+        ))}
+      </div>
+
       {/* Desktop / tablet: table. Mobile: stacked cards (same data, no horizontal scroll needed for a short row). */}
       <TableContainer className="hidden sm:block">
         <Table className="min-w-[720px]">
@@ -66,7 +128,11 @@ export function PatientsTable({ patients, basePath = "", initialQuery = "" }: Pa
               <TableHeaderCell>Age / Sex</TableHeaderCell>
               <TableHeaderCell>Last Visit</TableHeaderCell>
               <TableHeaderCell>Next Visit</TableHeaderCell>
+              {providers && <TableHeaderCell>Assigned to</TableHeaderCell>}
               <TableHeaderCell>Status</TableHeaderCell>
+              <TableHeaderCell>
+                <span className="sr-only">Actions</span>
+              </TableHeaderCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -96,24 +162,37 @@ export function PatientsTable({ patients, basePath = "", initialQuery = "" }: Pa
                 </TableCell>
                 <TableCell className="text-text-secondary">
                   {p.lastCleaningAt
-                    ? new Date(p.lastCleaningAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
+                    ? formatClinicDate(new Date(p.lastCleaningAt), timeZone)
                     : "—"}
                 </TableCell>
                 <TableCell className="text-text-secondary">
                   {p.nextApptAt
-                    ? new Date(p.nextApptAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
+                    ? formatClinicDate(new Date(p.nextApptAt), timeZone)
                     : "Not scheduled"}
                 </TableCell>
+                {providers && (
+                  <TableCell className="text-text-secondary">
+                    {providers.get(p.id) ? (
+                      <span className="flex flex-col">
+                        <span className="text-text-primary">{providers.get(p.id)!.name}</span>
+                        <span className="text-xs capitalize">
+                          {providers.get(p.id)!.role.toLowerCase()}
+                        </span>
+                      </span>
+                    ) : (
+                      "Unassigned"
+                    )}
+                  </TableCell>
+                )}
                 <TableCell>
                   <PatientStatusBadge status={p.status} />
+                </TableCell>
+                <TableCell className="w-10">
+                  <PatientStatusMenu
+                    patientId={p.id}
+                    patientName={patientFullName(p)}
+                    status={p.status}
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -123,27 +202,49 @@ export function PatientsTable({ patients, basePath = "", initialQuery = "" }: Pa
 
       <ul className="flex flex-col gap-3 sm:hidden">
         {filtered.map((p) => (
-          <li key={p.id}>
+          <li
+            key={p.id}
+            className="flex items-start gap-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 shadow-card"
+          >
+            {/* The badge sits under the meta line rather than beside it:
+                on a 375px screen a name, a badge and a menu button competing
+                for one row left the name truncated to a single letter. */}
             <Link
               href={`${basePath}/patients/${p.id}`}
-              className="flex items-center gap-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+              className="flex min-w-0 flex-1 items-start gap-3 rounded-[var(--radius-sm)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
             >
               <Avatar name={patientFullName(p)} src={p.photoUrl} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-text-primary">{patientFullName(p)}</p>
-                <p className="text-xs text-text-secondary">
-                  {patientAge(p)} yrs · Next: {p.nextApptAt ? new Date(p.nextApptAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Not scheduled"}
-                </p>
-              </div>
-              <PatientStatusBadge status={p.status} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium text-text-primary">
+                  {patientFullName(p)}
+                </span>
+                <span className="block truncate text-xs text-text-secondary">
+                  {patientAge(p)} yrs · Next: {p.nextApptAt ? formatClinicDateShort(new Date(p.nextApptAt), timeZone) : "Not scheduled"}
+                </span>
+                {providers && (
+                  <span className="block truncate text-xs text-text-secondary">
+                    {providers.get(p.id)?.name ?? "Unassigned"}
+                  </span>
+                )}
+                <span className="mt-1.5 block">
+                  <PatientStatusBadge status={p.status} />
+                </span>
+              </span>
             </Link>
+            <PatientStatusMenu
+              patientId={p.id}
+              patientName={patientFullName(p)}
+              status={p.status}
+            />
           </li>
         ))}
       </ul>
 
       {filtered.length === 0 && (
         <p className="py-8 text-center text-sm text-text-secondary">
-          No patients match &quot;{query}&quot;.
+          {query.trim()
+            ? `No ${statusFilter === "ALL" ? "" : PATIENT_STATUS_LABEL[statusFilter].toLowerCase() + " "}patients match "${query}".`
+            : `No ${statusFilter === "ALL" ? "" : PATIENT_STATUS_LABEL[statusFilter].toLowerCase() + " "}patients yet.`}
         </p>
       )}
     </div>

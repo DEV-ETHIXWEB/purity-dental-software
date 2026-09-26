@@ -48,7 +48,7 @@ export function Sidebar({ navItems, homeHref, user, variant = "desktop", onNavig
         onClick={onNavigate}
         className="flex items-center gap-2 px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-md)]"
       >
-        <Logo height={32} />
+        <Logo height={35} />
       </Link>
 
       <ul
@@ -100,7 +100,7 @@ export function Sidebar({ navItems, homeHref, user, variant = "desktop", onNavig
       </ul>
 
       <div className="flex items-center gap-2.5 rounded-[var(--radius-lg)] border border-border bg-surface-muted p-2">
-        <Avatar name={user.name} src={user.avatarUrl} size="sm" />
+        <Avatar name={user.name} src={user.avatarUrl} size="sm" presence={user.presence} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-text-primary">{user.name}</p>
           {user.role && <p className="truncate text-xs text-text-secondary">{user.role}</p>}

@@ -1,6 +1,12 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { Appointment, Patient, User } from "@/generated/prisma/client";
+import {
+  clinicDayKey,
+  clinicStartOfDay,
+  clinicStartOfNextDay,
+  clinicStartOfWeek,
+} from "@/lib/datetime";
 
 /**
  * Real Prisma-backed appointment queries — replaces the fixed 2026-08-24
@@ -20,26 +26,13 @@ export type AppointmentWithPatient = Appointment & { patient: Patient };
 /** Practice-wide (Receptionist) views additionally need the provider's name — every provider, not just one. */
 export type AppointmentWithPatientAndProvider = Appointment & { patient: Patient; provider: User };
 
-function startOfDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function endOfDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
-
-/** Monday of the week containing `d` (ISO week, not US Sunday-start). */
-function startOfWeek(d: Date): Date {
-  const x = startOfDay(d);
-  const day = x.getDay(); // 0 = Sunday
-  const diff = day === 0 ? -6 : 1 - day;
-  x.setDate(x.getDate() + diff);
-  return x;
-}
+/*
+ * "Today" and "this week" are the PRACTICE's day, not the server's. These
+ * queries used the process's local midnight, so a deploy in another region
+ * sliced the day at the wrong instant: a 7pm New York booking fell outside
+ * "today" and the Day view reported an empty schedule while the row existed.
+ * See `lib/datetime.ts`.
+ */
 
 export async function appointmentsForProvider(
   organizationId: string,
@@ -55,13 +48,14 @@ export async function appointmentsForProvider(
 export async function todaysAppointmentsForProvider(
   organizationId: string,
   providerId: string,
+  timeZone: string,
 ): Promise<AppointmentWithPatient[]> {
   const now = new Date();
   return prisma.appointment.findMany({
     where: {
       organizationId,
       providerId,
-      startTime: { gte: startOfDay(now), lte: endOfDay(now) },
+      startTime: { gte: clinicStartOfDay(now, timeZone), lt: clinicStartOfNextDay(now, timeZone) },
     },
     include: { patient: true },
     orderBy: { startTime: "asc" },
@@ -88,12 +82,15 @@ export async function practiceAppointments(organizationId: string): Promise<Appo
   });
 }
 
-export async function todaysPracticeAppointments(organizationId: string): Promise<AppointmentWithPatientAndProvider[]> {
+export async function todaysPracticeAppointments(
+  organizationId: string,
+  timeZone: string,
+): Promise<AppointmentWithPatientAndProvider[]> {
   const now = new Date();
   return prisma.appointment.findMany({
     where: {
       organizationId,
-      startTime: { gte: startOfDay(now), lte: endOfDay(now) },
+      startTime: { gte: clinicStartOfDay(now, timeZone), lt: clinicStartOfNextDay(now, timeZone) },
     },
     include: { patient: true, provider: true },
     orderBy: { startTime: "asc" },
@@ -175,6 +172,7 @@ export interface TodaysVisitBreakdown {
 export async function todaysVisitBreakdown(
   organizationId: string,
   providerId: string,
+  timeZone: string,
 ): Promise<TodaysVisitBreakdown> {
   const now = new Date();
 
@@ -183,7 +181,7 @@ export async function todaysVisitBreakdown(
       organizationId,
       providerId,
       status: { not: "CANCELLED" },
-      startTime: { gte: startOfDay(now), lte: endOfDay(now) },
+      startTime: { gte: clinicStartOfDay(now, timeZone), lt: clinicStartOfNextDay(now, timeZone) },
     },
     select: { patientId: true, startTime: true },
   });
@@ -237,10 +235,10 @@ export async function todaysVisitBreakdown(
 export async function weeklyVisitCounts(
   organizationId: string,
   providerId: string,
+  timeZone: string,
 ): Promise<{ day: string; count: number }[]> {
-  const monday = startOfWeek(new Date());
-  const sunday = new Date(monday);
-  sunday.setDate(sunday.getDate() + 7);
+  const monday = clinicStartOfWeek(new Date(), timeZone);
+  const sunday = clinicStartOfWeek(new Date(monday.getTime() + 8 * 86_400_000), timeZone);
 
   const weekAppointments = await prisma.appointment.findMany({
     where: {
@@ -253,9 +251,14 @@ export async function weeklyVisitCounts(
 
   const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const counts = new Array(7).fill(0);
+  // Matched on practice-local calendar keys rather than a millisecond
+  // division, so the 23- and 25-hour DST days still land in one bucket each.
+  const dayKeys = Array.from({ length: 7 }, (_, i) =>
+    clinicDayKey(new Date(monday.getTime() + i * 86_400_000 + 12 * 3_600_000), timeZone),
+  );
   for (const appt of weekAppointments) {
-    const dayIndex = Math.floor((startOfDay(appt.startTime).getTime() - monday.getTime()) / 86_400_000);
-    if (dayIndex >= 0 && dayIndex < 7) counts[dayIndex]++;
+    const index = dayKeys.indexOf(clinicDayKey(appt.startTime, timeZone));
+    if (index >= 0) counts[index]++;
   }
   return labels.map((day, i) => ({ day, count: counts[i] }));
 }

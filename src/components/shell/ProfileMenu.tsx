@@ -84,8 +84,10 @@ export function ProfileMenu({ user, profileHref }: ProfileMenuProps) {
           open && "bg-surface-muted",
         )}
       >
-        <Avatar name={user.name} src={user.avatarUrl} size="sm" />
-        <span className="hidden text-sm font-medium text-text-primary md:inline lg:hidden">
+        <Avatar name={user.name} src={user.avatarUrl} size="sm" presence={user.presence} />
+        {/* Was `lg:hidden`, so the name vanished again on exactly the
+            widths with the most room for it. */}
+        <span className="hidden text-sm font-medium text-text-primary md:inline">
           {user.name}
         </span>
         <ChevronDown

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { ContactDetailsCard } from "@/components/dentist/ContactDetailsCard";
+import { MessagingAccessSection } from "@/components/receptionist/MessagingAccessSection";
 import { BillingDetailsCard } from "@/components/dentist/BillingDetailsCard";
 import { InvoiceStatusBadge } from "@/components/dentist/InvoiceStatusBadge";
 import { RecallStatusBadge } from "@/components/dentist/PatientStatusBadge";
@@ -30,6 +31,8 @@ import type { InvoiceWithDetails } from "@/lib/data/billing";
 import type { AppointmentWithPatientAndProvider } from "@/lib/data/appointments";
 import type { Patient, AppointmentStatus } from "@/generated/prisma/client";
 import { type BadgeTone } from "@/components/ui/Badge";
+import { formatCalendarDate, formatClinicDate } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 const STATUS_TONE: Record<AppointmentStatus, BadgeTone> = {
   SCHEDULED: "info",
@@ -52,6 +55,7 @@ export function ReceptionistPatientProfileView({
   appointments,
   invoices,
 }: ReceptionistPatientProfileViewProps) {
+  const timeZone = useClinicTimeZone();
   const router = useRouter();
   const name = patientFullName(patient);
   const [editing, setEditing] = useState(false);
@@ -105,11 +109,7 @@ export function ReceptionistPatientProfileView({
               <>
                 <h1 className="text-xl font-semibold text-text-primary">{name}</h1>
                 <p className="text-sm text-text-secondary">
-                  {patient.dateOfBirth.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}{" "}
+                  {formatCalendarDate(patient.dateOfBirth)}{" "}
                   ({patientAge(patient)} yrs) ·{" "}
                   {patient.sex === "MALE" ? "Male" : patient.sex === "FEMALE" ? "Female" : "Other"}
                 </p>
@@ -169,6 +169,11 @@ export function ReceptionistPatientProfileView({
                 )}
               </div>
             </section>
+            <MessagingAccessSection
+              patientId={patient.id}
+              patientFirstName={patient.firstName}
+              allowed={patient.canMessageCareTeam}
+            />
           </Card>
         </div>
 
@@ -210,11 +215,7 @@ export function ReceptionistPatientProfileView({
                           {appointments.map((appt) => (
                             <TableRow key={appt.id}>
                               <TableCell className="text-text-secondary">
-                                {appt.startTime.toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })}
+                                {formatClinicDate(appt.startTime, timeZone)}
                               </TableCell>
                               <TableCell className="text-text-primary">{appt.provider.name}</TableCell>
                               <TableCell className="text-text-primary">{appt.procedureType}</TableCell>
@@ -258,11 +259,7 @@ export function ReceptionistPatientProfileView({
                                 {invoiceNumber(invoice)}
                               </TableCell>
                               <TableCell className="text-text-secondary">
-                                {invoice.issuedAt.toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })}
+                                {formatClinicDate(invoice.issuedAt, timeZone)}
                               </TableCell>
                               <TableCell className="font-medium text-text-primary">
                                 {formatCentsAsCurrency(invoice.totalCents)}

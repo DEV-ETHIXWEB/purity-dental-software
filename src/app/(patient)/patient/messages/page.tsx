@@ -34,12 +34,21 @@ export default async function PatientMessagesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-text-primary">Messages</h1>
-          <p className="text-sm text-text-secondary">Reach your care team any time — we usually reply within a day.</p>
+          <p className="text-sm text-text-secondary">
+            {patient.canMessageCareTeam
+              ? "Reach your care team any time — we usually reply within a day."
+              : "Your message history. Ask the front desk to enable messaging to reply."}
+          </p>
         </div>
         {unreadCount > 0 && <Badge tone="brand-blue">{unreadCount} new</Badge>}
       </div>
 
-      <PatientMessagesView initialMessages={messages} patientId={patient.id} patientFirstName={patient.firstName} />
+      <PatientMessagesView
+        initialMessages={messages}
+        patientId={patient.id}
+        patientFirstName={patient.firstName}
+        canSend={patient.canMessageCareTeam}
+      />
     </div>
   );
 }

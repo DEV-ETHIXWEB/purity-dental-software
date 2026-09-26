@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
 import type { InvoiceWithDetails, PatientBillingOverview } from "@/lib/data/billing";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 const TILE_CLASSES =
   "group flex h-full min-h-11 items-center gap-2.5 rounded-[var(--radius-lg)] border border-border p-3 text-left transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:bg-surface-muted hover:shadow-card active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100";
@@ -50,6 +51,7 @@ export interface PatientBillingViewProps {
  * opening an empty modal.
  */
 export function PatientBillingView({ initialInvoices, overview }: PatientBillingViewProps) {
+  const timeZone = useClinicTimeZone();
   const router = useRouter();
   const [payTarget, setPayTarget] = useState<InvoiceWithDetails | null>(null);
 
@@ -80,7 +82,7 @@ export function PatientBillingView({ initialInvoices, overview }: PatientBilling
 
   return (
     <>
-      <BillingOverviewCard overview={overview} />
+      <BillingOverviewCard overview={overview} timeZone={timeZone} />
 
       <section aria-labelledby="quick-access" className="animate-rise-in stagger-2">
         <h2 id="quick-access" className="text-[15px] font-semibold tracking-tight text-text-primary">
@@ -164,7 +166,7 @@ export function PatientBillingView({ initialInvoices, overview }: PatientBilling
                         {invoice.lineItems[0]?.description ?? "Treatment"}
                       </p>
                       <p className="truncate text-xs text-text-secondary">
-                        {invoiceNumber(invoice)} • {formatShortDate(invoice.issuedAt)}
+                        {invoiceNumber(invoice)} • {formatShortDate(invoice.issuedAt, timeZone)}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">

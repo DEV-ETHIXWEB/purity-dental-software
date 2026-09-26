@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { formatFriendlyDate, formatTime } from "./formatters";
 import { reschedulePatientAppointment } from "@/lib/actions/patient-appointments";
 import type { AppointmentWithPatientAndProvider } from "@/lib/data/appointments";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 export interface RescheduleAppointmentModalProps {
   appointment: AppointmentWithPatientAndProvider | null;
@@ -55,6 +56,7 @@ export function RescheduleAppointmentModal({
   onClose,
   onRescheduled,
 }: RescheduleAppointmentModalProps) {
+  const timeZone = useClinicTimeZone();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +99,7 @@ export function RescheduleAppointmentModal({
       title="Move this appointment"
       description={
         appointment
-          ? `Currently ${formatFriendlyDate(appointment.startTime)} at ${formatTime(appointment.startTime)}`
+          ? `Currently ${formatFriendlyDate(appointment.startTime, timeZone)} at ${formatTime(appointment.startTime, timeZone)}`
           : undefined
       }
     >
@@ -124,9 +126,9 @@ export function RescheduleAppointmentModal({
                   )}
                 >
                   <span className="text-sm font-medium text-text-primary">
-                    {formatFriendlyDate(slot.startTime)}
+                    {formatFriendlyDate(slot.startTime, timeZone)}
                   </span>
-                  <span className="text-xs text-text-secondary">{formatTime(slot.startTime)}</span>
+                  <span className="text-xs text-text-secondary">{formatTime(slot.startTime, timeZone)}</span>
                 </button>
               );
             })}

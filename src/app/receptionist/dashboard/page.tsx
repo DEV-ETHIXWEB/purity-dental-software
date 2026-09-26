@@ -7,7 +7,8 @@ import { TodaysVisitsList } from "@/components/receptionist/TodaysVisitsList";
 import { FollowUpsCard } from "@/components/dentist/FollowUpsCard";
 import { requirePageRole } from "@/lib/auth/require-portal";
 import { todaysPracticeAppointments } from "@/lib/data/appointments";
-import { listFollowUps } from "@/lib/data/patients";
+import { listFollowUps, recentlyRemindedPatientIds } from "@/lib/data/patients";
+import { clinicTimeZone } from "@/lib/data/organization";
 
 export const metadata: Metadata = {
   title: "Front Desk Dashboard",
@@ -16,12 +17,22 @@ export const metadata: Metadata = {
 
 export default async function ReceptionistDashboardPage() {
   const session = await requirePageRole(["RECEPTIONIST", "ADMIN"]);
+  const timeZone = await clinicTimeZone(session.user.organizationId);
   const { organizationId } = session.user;
 
   const [today, followUps] = await Promise.all([
-    todaysPracticeAppointments(organizationId),
+    todaysPracticeAppointments(organizationId, timeZone),
     listFollowUps(organizationId),
   ]);
+
+  // Which follow-ups already had a reminder inside the cooldown, so the
+  // button renders as "Reminded" instead of inviting a refused send.
+  const remindedPatientIds = [
+    ...(await recentlyRemindedPatientIds(
+      organizationId,
+      followUps.map((p) => p.id),
+    )),
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -33,7 +44,7 @@ export default async function ReceptionistDashboardPage() {
           </p>
         </div>
         <Link
-          href="/receptionist/schedule"
+          href="/receptionist/schedule?book=1"
           className="inline-flex h-10 items-center gap-2 self-start rounded-[var(--radius-lg)] border border-border bg-transparent px-4 text-sm font-medium text-text-primary transition-colors hover:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
         >
           <CalendarPlus className="h-4 w-4" aria-hidden="true" />
@@ -43,17 +54,17 @@ export default async function ReceptionistDashboardPage() {
 
       <FrontDeskStatsRow todaysAppointments={today} />
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
+        <Card className="flex flex-col lg:col-span-2">
           <CardHeader>
             <CardTitle>Today&apos;s Visits</CardTitle>
           </CardHeader>
-          <CardContent>
-            <TodaysVisitsList appointments={today} />
+          <CardContent className="flex flex-1 flex-col">
+            <TodaysVisitsList appointments={today} timeZone={timeZone} />
           </CardContent>
         </Card>
 
-        <FollowUpsCard patients={followUps} />
+        <FollowUpsCard patients={followUps} remindedPatientIds={remindedPatientIds} />
       </div>
     </div>
   );

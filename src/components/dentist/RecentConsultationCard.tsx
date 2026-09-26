@@ -6,23 +6,38 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { patientFullName, patientAge } from "@/lib/patient-format";
 import type { Patient } from "@/generated/prisma/client";
+import { formatClinicDate } from "@/lib/datetime";
 
 const ALERT_TONE = "error" as const;
 
 export interface RecentConsultationCardProps {
   patient: Patient;
   observation: string;
+  /**
+   * The patient's most recent completed visit.
+   *
+   * Passed in rather than read off `patient.lastCleaningAt`: this card
+   * receives the patient embedded in an appointment row, which carries the
+   * raw snapshot column instead of the read-time-derived one — which is how
+   * it came to print "Last cleaning: Mar 21, 2026" directly above "Cleaning
+   * completed on Aug 20, 2026".
+   */
+  lastVisitAt: Date | null;
   /** Portal route prefix for the patient profile link (e.g. "/hygienist"). Defaults to the Dentist portal's root. */
   basePath?: string;
+  /** The practice's timezone — Server Components can't read `useClinicTimeZone()`, so their parent passes it down. */
+  timeZone: string;
 }
 
 export function RecentConsultationCard({
+  timeZone,
+  lastVisitAt,
   patient,
   observation,
   basePath = "",
 }: RecentConsultationCardProps) {
   return (
-    <Card className="animate-rise-in stagger-3 transition-shadow duration-300 ease-out hover:shadow-card-hover">
+    <Card className="animate-rise-in stagger-3 flex h-full flex-col transition-shadow duration-300 ease-out hover:shadow-card-hover">
       <CardHeader>
         <CardTitle>Recent Consultation</CardTitle>
       </CardHeader>
@@ -37,7 +52,7 @@ export function RecentConsultationCard({
           <div className="min-w-0">
             <Link
               href={`${basePath}/patients/${patient.id}`}
-              className="truncate font-semibold text-text-primary transition-all duration-200 ease-out hover:text-[var(--color-brand-blue-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)] group-hover/patient:-translate-y-0.5 group-hover/patient:text-[var(--color-brand-blue-text)] motion-reduce:group-hover/patient:translate-y-0"
+              className="block truncate font-semibold text-text-primary transition-all duration-200 ease-out hover:text-[var(--color-brand-blue-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)] group-hover/patient:-translate-y-0.5 group-hover/patient:text-[var(--color-brand-blue-text)] motion-reduce:group-hover/patient:translate-y-0"
             >
               {patientFullName(patient)}
             </Link>
@@ -63,15 +78,9 @@ export function RecentConsultationCard({
 
         <div className="rounded-[var(--radius-md)] bg-surface-muted p-3 text-sm transition-colors duration-200 ease-out hover:bg-surface-sunken">
           <p className="text-text-secondary">
-            Last cleaning:{" "}
+            Last visit:{" "}
             <span className="text-text-primary">
-              {patient.lastCleaningAt
-                ? new Date(patient.lastCleaningAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })
-                : "No record"}
+              {lastVisitAt ? formatClinicDate(lastVisitAt, timeZone) : "No record"}
             </span>
           </p>
           <p className="mt-1 text-text-primary">{observation}</p>

@@ -7,11 +7,14 @@ import { PaymentMethodChip } from "@/components/ui/icons/payment-icons";
 import { patientFullName } from "@/lib/patient-format";
 import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
 import type { InvoiceWithDetails } from "@/lib/data/billing";
+import { formatClinicDate } from "@/lib/datetime";
 
 export interface RecentTransactionsListProps {
   invoices: InvoiceWithDetails[];
   /** Portal route prefix for invoice detail links (e.g. "/hygienist"). Defaults to the Dentist portal's root. */
   basePath?: string;
+  /** The practice's timezone — Server Components can't read `useClinicTimeZone()`, so their parent passes it down. */
+  timeZone: string;
 }
 
 const STAGGER = ["stagger-0", "stagger-1", "stagger-2", "stagger-3", "stagger-4", "stagger-5"];
@@ -27,7 +30,7 @@ const STAGGER = ["stagger-0", "stagger-1", "stagger-2", "stagger-3", "stagger-4"
  * patient's name — the surrounding chips and badges are non-interactive,
  * so nothing is swallowed by the overlay.
  */
-export function RecentTransactionsList({ invoices, basePath = "" }: RecentTransactionsListProps) {
+export function RecentTransactionsList({ invoices, basePath = "", timeZone }: RecentTransactionsListProps) {
   return (
     <ul className="divide-y divide-border">
       {invoices.map((invoice, i) => (
@@ -53,7 +56,7 @@ export function RecentTransactionsList({ invoices, basePath = "" }: RecentTransa
               {patientFullName(invoice.patient)}
             </Link>
             <p className="truncate text-xs text-text-secondary">
-              {invoiceNumber(invoice)} · {invoice.issuedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              {invoiceNumber(invoice)} · {formatClinicDate(invoice.issuedAt, timeZone)}
             </p>
           </div>
           <PaymentMethodChip method={invoice.paymentMethod} last4={invoice.paymentMethodLast4} className="hidden sm:inline-flex" />

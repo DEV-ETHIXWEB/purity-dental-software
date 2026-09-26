@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth/authorize";
 import { getInvoiceById } from "@/lib/data/billing";
 import { invoiceNumber } from "@/lib/billing-format";
 import { InvoicePdfDocument } from "@/components/dentist/InvoicePdfDocument";
+import { clinicTimeZone } from "@/lib/data/organization";
 
 /**
  * Streams a real PDF for the invoice detail page's "Download PDF" button.
@@ -23,13 +24,16 @@ export async function GET(
 ) {
   const session = await requireRole(["DENTIST", "ADMIN"]);
   const { invoiceId } = await params;
-  const invoice = await getInvoiceById(session.user.organizationId, invoiceId);
+  const [invoice, timeZone] = await Promise.all([
+    getInvoiceById(session.user.organizationId, invoiceId),
+    clinicTimeZone(session.user.organizationId),
+  ]);
 
   if (!invoice) {
     return new NextResponse("Invoice not found", { status: 404 });
   }
 
-  const buffer = await renderToBuffer(InvoicePdfDocument({ invoice }));
+  const buffer = await renderToBuffer(InvoicePdfDocument({ invoice, timeZone }));
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

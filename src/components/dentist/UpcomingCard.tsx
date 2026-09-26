@@ -6,6 +6,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { AppointmentListItem } from "@/components/dentist/AppointmentListItem";
 import { cn } from "@/lib/cn";
 import type { AppointmentWithPatient } from "@/lib/data/appointments";
+import { formatClinicMonthYear } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -38,6 +40,7 @@ export interface UpcomingCardProps {
  * calendar + agenda pairing.
  */
 export function UpcomingCard({ appointments, basePath }: UpcomingCardProps) {
+  const timeZone = useClinicTimeZone();
   const [anchorDate, setAnchorDate] = useState(() => startOfDay(new Date()));
   const today = startOfDay(new Date());
 
@@ -48,7 +51,7 @@ export function UpcomingCard({ appointments, basePath }: UpcomingCardProps) {
     .filter((a) => a.status !== "CANCELLED" && isSameDay(a.startTime, anchorDate))
     .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 
-  const monthLabel = anchorDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const monthLabel = formatClinicMonthYear(anchorDate, timeZone);
 
   return (
     <Card className="animate-rise-in stagger-5 flex h-full flex-col transition-shadow duration-300 ease-out hover:shadow-card-hover">
@@ -59,7 +62,7 @@ export function UpcomingCard({ appointments, basePath }: UpcomingCardProps) {
             type="button"
             onClick={() => setAnchorDate((d) => addDays(d, -7))}
             aria-label="Previous week"
-            className="group/prev rounded-[var(--radius-md)] p-1 text-text-secondary transition-colors duration-200 ease-out hover:bg-surface-muted hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+            className="group/prev inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--radius-md)] p-1 text-text-secondary transition-colors duration-200 ease-out hover:bg-surface-muted hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] sm:min-h-0 sm:min-w-0"
           >
             <ChevronLeft
               className="h-4 w-4 transition-transform duration-200 ease-out group-hover/prev:-translate-x-0.5 motion-reduce:group-hover/prev:translate-x-0"
@@ -71,7 +74,7 @@ export function UpcomingCard({ appointments, basePath }: UpcomingCardProps) {
             type="button"
             onClick={() => setAnchorDate((d) => addDays(d, 7))}
             aria-label="Next week"
-            className="group/next rounded-[var(--radius-md)] p-1 text-text-secondary transition-colors duration-200 ease-out hover:bg-surface-muted hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+            className="group/next inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--radius-md)] p-1 text-text-secondary transition-colors duration-200 ease-out hover:bg-surface-muted hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] sm:min-h-0 sm:min-w-0"
           >
             <ChevronRight
               className="h-4 w-4 transition-transform duration-200 ease-out group-hover/next:translate-x-0.5 motion-reduce:group-hover/next:translate-x-0"
@@ -91,7 +94,18 @@ export function UpcomingCard({ appointments, basePath }: UpcomingCardProps) {
                 type="button"
                 onClick={() => setAnchorDate(d)}
                 aria-current={isActive ? "date" : undefined}
-                className="group/day flex flex-col items-center gap-1 rounded-[var(--radius-md)] py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+                /*
+                 * The hit area is widened past the visible cell on phones,
+                 * rather than the cell itself.
+                 *
+                 * Seven cells share a 303px grid, so even at zero gap each
+                 * one is 43px — 44 is unreachable here without restructuring
+                 * the card. The `::after` overlay spans into half the gutter
+                 * on each side, which brings the tappable box to ~44px while
+                 * the cells stay visually separated. Adjacent overlays meet
+                 * but do not overlap.
+                 */
+                className="group/day relative flex flex-col items-center gap-1 rounded-[var(--radius-md)] py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] max-sm:after:absolute max-sm:after:inset-y-0 max-sm:after:-inset-x-0.5 max-sm:after:content-['']"
               >
                 <span className="text-[10px] font-medium text-text-secondary transition-colors duration-200 ease-out group-hover/day:text-text-primary">
                   {DAY_LETTERS[i]}
@@ -123,7 +137,7 @@ export function UpcomingCard({ appointments, basePath }: UpcomingCardProps) {
           ) : (
             <ul className="divide-y divide-border">
               {dayAppointments.map((appt) => (
-                <AppointmentListItem key={appt.id} appointment={appt} basePath={basePath} />
+                <AppointmentListItem key={appt.id} appointment={appt} basePath={basePath} timeZone={timeZone} />
               ))}
             </ul>
           )}

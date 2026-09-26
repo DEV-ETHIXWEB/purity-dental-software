@@ -24,7 +24,9 @@ function makeSession(overrides: Partial<CurrentSession["user"]> = {}): CurrentSe
       email: "dentist@example.com",
       name: "Dr. Test",
       phone: null,
+      presence: "AVAILABLE",
       avatarUrl: null,
+      permissionOverrides: null,
       ...overrides,
     },
   };

@@ -56,12 +56,24 @@ export function DashboardHero({ onTimePct, recallsDue }: DashboardHeroProps) {
     <div
       onPointerMove={handlePointerMove}
       onPointerLeave={() => setView(CENTER_VIEW)}
-      className="decor-radial-teal-blue animate-rise-in stagger-1 relative flex h-72 items-center justify-center overflow-hidden rounded-[var(--radius-xl)] border border-border p-6 transition-shadow duration-300 ease-out hover:shadow-card-hover sm:h-80 lg:h-[360px]"
+      /*
+       * The renders are opaque — they ship with their own pale-blue backdrop
+       * and no alpha — so any panel background behind them showed as a ring
+       * of a visibly different colour around the artwork. Keying the backdrop
+       * out isn't an option: the model is translucent blue against pale blue,
+       * and a flood fill eats straight through the teeth.
+       *
+       * So the artwork covers the panel edge to edge instead, and its own
+       * backdrop becomes the panel's. Nothing behind it is ever visible, so
+       * there is no seam to match. `decor-radial-teal-blue` stays as the
+       * colour behind the fade between views.
+       */
+      className="decor-radial-teal-blue animate-rise-in stagger-1 relative h-72 overflow-hidden rounded-[var(--radius-xl)] border border-border transition-shadow duration-300 ease-out hover:shadow-card-hover sm:h-80 lg:h-[22.5rem]"
     >
       {/* Stacked renders. `alt=""` on all three: this is one decorative
           illustration that happens to have three angles, not three separate
           images a screen reader should announce. */}
-      <div className="relative h-full w-full">
+      <div className="absolute inset-0">
         {HERO_VIEWS.map((heroView, i) => (
           <Image
             key={heroView.label}
@@ -69,10 +81,14 @@ export function DashboardHero({ onTimePct, recallsDue }: DashboardHeroProps) {
             alt=""
             width={750}
             height={750}
-            sizes="400px"
+            sizes="(min-width: 1024px) 40vw, 100vw"
             priority={i === CENTER_VIEW}
             className={cn(
-              "absolute left-1/2 top-1/2 h-full w-auto max-w-none -translate-x-1/2 -translate-y-1/2",
+              // Centred crop. The panel is roughly the render's own aspect
+              // ratio at most widths, so little is lost either way; at the
+              // widest column an off-centre crop started clipping the glass
+              // base, and centring keeps both the base and the arch in frame.
+              "absolute inset-0 h-full w-full object-cover object-center",
               "transition-opacity duration-300 ease-out motion-reduce:transition-none",
               i === view ? "opacity-100" : "opacity-0",
             )}

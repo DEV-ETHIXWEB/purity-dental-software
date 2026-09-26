@@ -17,12 +17,52 @@ function meterClass(pct: number) {
   return `meter-fill-${clamped > 0 ? Math.max(5, step) : 0}`;
 }
 
-export function BillingOverviewCard({ overview }: { overview: PatientBillingOverview }) {
-  const { amountDueCents, nextDueAt, hasOverdue, insurance } = overview;
+export function BillingOverviewCard({
+  overview,
+  timeZone,
+}: {
+  overview: PatientBillingOverview;
+  /**
+   * Passed in rather than read from `useClinicTimeZone()`: this card is
+   * rendered from the Bills page (a Client Component) *and* straight from
+   * the patient dashboard, which is a Server Component and has no hook.
+   */
+  timeZone: string;
+}) {
+  const { amountDueCents, nextDueAt, hasOverdue, overdueCents, overdueSince, insurance } = overview;
+
+  /*
+   * Say what is actually late.
+   *
+   * This line used to read "Overdue since <date>" against the whole balance
+   * the moment any one invoice slipped — telling a patient who owed $267.21,
+   * only $180 of it late, that all of it was overdue. When part of the
+   * balance is still within its terms, both facts get stated.
+   */
+  const partlyOverdue = hasOverdue && overdueCents > 0 && overdueCents < amountDueCents;
+  const dueLine =
+    amountDueCents === 0
+      ? "You're all paid up"
+      : partlyOverdue && overdueSince
+        ? `${formatCentsAsCurrency(overdueCents)} overdue since ${formatShortDate(overdueSince, timeZone)}`
+        : hasOverdue && overdueSince
+          ? `Overdue since ${formatShortDate(overdueSince, timeZone)}`
+          : nextDueAt
+            ? `Due on ${formatShortDate(nextDueAt, timeZone)}`
+            : "No due date on file";
 
   return (
-    <Card className="animate-rise-in stagger-1 transition-shadow duration-300 ease-out hover:shadow-card-hover">
-      <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+    <Card className="@container/billing animate-rise-in stagger-1 transition-shadow duration-300 ease-out hover:shadow-card-hover">
+      {/*
+       * A container query, not a viewport one. `sm:` measures the window, so
+       * on a wide screen this split into two columns even when the card
+       * itself was only ~350px wide in the dashboard's side column — which
+       * is what wrapped "$180.00 overdue since Sep 21, 2026" onto three
+       * lines and crushed the coverage meter. `@lg` measures the card, so it
+       * splits on the Bills page where it is full width, and stacks in the
+       * narrow column where it isn't.
+       */}
+      <div className="grid grid-cols-1 divide-y divide-border @lg/billing:grid-cols-2 @lg/billing:divide-x @lg/billing:divide-y-0">
         <div className="flex items-start justify-between gap-3 p-4">
           <div className="min-w-0">
             <p className="text-sm font-medium text-text-secondary">Amount due</p>
@@ -35,11 +75,7 @@ export function BillingOverviewCard({ overview }: { overview: PatientBillingOver
                 hasOverdue && amountDueCents > 0 ? "font-medium text-error-text" : "text-text-secondary",
               )}
             >
-              {amountDueCents === 0
-                ? "You're all paid up"
-                : nextDueAt
-                  ? `${hasOverdue ? "Overdue since" : "Due on"} ${formatShortDate(nextDueAt)}`
-                  : "No due date on file"}
+              {dueLine}
             </p>
           </div>
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-muted">

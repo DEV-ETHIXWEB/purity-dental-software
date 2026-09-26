@@ -1,4 +1,5 @@
 import type { PerioChartEntry } from "@/generated/prisma/client";
+import { formatClinicDate } from "@/lib/datetime";
 
 type Tone = "success" | "warning" | "error";
 
@@ -22,7 +23,7 @@ const STROKE_TONE_VAR: Record<Tone, string> = {
  * the same two headline metrics using the app's existing hand-built SVG
  * chart language (see CollectionRateRing).
  */
-export function PerioChartCard({ entry }: { entry: PerioChartEntry | null }) {
+export function PerioChartCard({ entry, timeZone }: { entry: PerioChartEntry | null; timeZone: string }) {
   if (!entry) {
     return <p className="text-sm text-text-secondary">No perio chart on file yet.</p>;
   }
@@ -60,11 +61,7 @@ export function PerioChartCard({ entry }: { entry: PerioChartEntry | null }) {
         </div>
         <p className="text-xs text-text-secondary">
           Last charted{" "}
-          {new Date(entry.chartedAt).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
+          {formatClinicDate(new Date(entry.chartedAt), timeZone)}
         </p>
       </dl>
     </div>

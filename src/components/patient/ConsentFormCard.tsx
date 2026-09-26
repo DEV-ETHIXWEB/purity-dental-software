@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { DocumentIconFilled } from "@/components/ui/icons/purity-icons";
 import { CheckmarkIcon } from "@/components/ui/icons/purity-raster-icons";
+import { formatClinicDateTime } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 export interface ConsentForm {
   id: string;
@@ -22,6 +24,7 @@ export interface ConsentForm {
  * DB-backed model; that's a real follow-up, not an oversight here.
  */
 export function ConsentFormCard({ form }: { form: ConsentForm }) {
+  const timeZone = useClinicTimeZone();
   const [agreed, setAgreed] = useState(false);
   const [signing, setSigning] = useState(false);
   const [signedAt, setSignedAt] = useState<string | null>(null);
@@ -54,12 +57,7 @@ export function ConsentFormCard({ form }: { form: ConsentForm }) {
           <CheckmarkIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             Signed on{" "}
-            {new Date(signedAt).toLocaleString("en-US", {
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            })}
+            {formatClinicDateTime(new Date(signedAt), timeZone)}
           </span>
         </div>
       ) : (

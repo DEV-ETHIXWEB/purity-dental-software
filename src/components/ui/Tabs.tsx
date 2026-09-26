@@ -106,9 +106,16 @@ export function TabsList({ children, className }: { children: ReactNode; classNa
       ref={registerList}
       role="tablist"
       className={cn(
-        // `scrollbar-none` keeps the strip swipeable on a phone without a
-        // chunky native scrollbar sitting under the tabs.
-        "scrollbar-none flex items-center gap-1 overflow-x-auto rounded-[var(--radius-lg)] bg-surface-sunken p-1",
+        // Wraps on a phone rather than scrolling sideways.
+        //
+        // This was a `scrollbar-none` horizontal scroller, which meant 692px
+        // of tabs inside a 303px strip with the scrollbar deliberately
+        // hidden and no fade or arrow — so on a narrow screen the later tabs
+        // existed but nothing on screen said so. Wrapping shows all of them;
+        // from `sm` up they fit on one line anyway, where the scroller stays
+        // as the fallback for an unusually long set.
+        "flex flex-wrap items-center gap-1 rounded-[var(--radius-lg)] bg-surface-sunken p-1",
+        "sm:scrollbar-none sm:flex-nowrap sm:overflow-x-auto",
         className,
       )}
     >
@@ -137,7 +144,11 @@ export function TabsTrigger({
       tabIndex={isActive ? 0 : -1}
       onClick={() => setActiveValue(value)}
       className={cn(
-        "shrink-0 rounded-[var(--radius-md)] px-3.5 py-2 text-sm font-medium transition-colors",
+        // `inline-flex` + `min-h-11` gives a 44px touch target on phones while
+        // keeping the label centred; from `sm` up the padding sets the height
+        // as before. See the note on Button's size classes.
+        "inline-flex shrink-0 items-center justify-center rounded-[var(--radius-md)] px-3.5 py-2 text-sm font-medium transition-colors",
+        "min-h-11 sm:min-h-0",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]",
         isActive
           ? "bg-surface text-text-primary shadow-card"

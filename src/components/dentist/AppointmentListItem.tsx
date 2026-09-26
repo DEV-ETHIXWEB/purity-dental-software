@@ -5,6 +5,7 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { patientFullName } from "@/lib/patient-format";
 import type { AppointmentWithPatient } from "@/lib/data/appointments";
 import type { AppointmentStatus } from "@/generated/prisma/client";
+import { formatClinicTime } from "@/lib/datetime";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   SCHEDULED: "Scheduled",
@@ -30,14 +31,13 @@ export interface AppointmentListItemProps {
   appointment: AppointmentWithPatient;
   /** Portal route prefix for the patient profile link (e.g. "/hygienist"). Defaults to the Dentist portal's root. */
   basePath?: string;
+  /** The practice's timezone — Server Components can't read `useClinicTimeZone()`, so their parent passes it down. */
+  timeZone: string;
 }
 
-export function AppointmentListItem({ appointment, basePath = "" }: AppointmentListItemProps) {
+export function AppointmentListItem({ appointment, basePath = "", timeZone }: AppointmentListItemProps) {
   const patient = appointment.patient;
-  const time = appointment.startTime.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const time = formatClinicTime(appointment.startTime, timeZone);
 
   return (
     <li
@@ -61,7 +61,7 @@ export function AppointmentListItem({ appointment, basePath = "" }: AppointmentL
         {patient ? (
           <Link
             href={`${basePath}/patients/${patient.id}`}
-            className="truncate text-sm font-medium text-text-primary transition-all duration-200 ease-out group-hover/appt:-translate-y-0.5 group-hover/appt:text-[var(--color-brand-blue-text)] motion-reduce:group-hover/appt:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
+            className="block truncate text-sm font-medium text-text-primary transition-all duration-200 ease-out group-hover/appt:-translate-y-0.5 group-hover/appt:text-[var(--color-brand-blue-text)] motion-reduce:group-hover/appt:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
           >
             {patientFullName(patient)}
           </Link>

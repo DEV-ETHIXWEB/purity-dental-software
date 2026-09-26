@@ -11,7 +11,7 @@ export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4 text-center">
       <Link href="/" className="rounded-[var(--radius-md)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]">
-        <Logo height={40} />
+        <Logo height={44} />
       </Link>
 
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-sunken text-text-secondary">

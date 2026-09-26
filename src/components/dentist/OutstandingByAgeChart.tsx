@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatCentsAsCurrency } from "@/lib/billing-format";
 
@@ -20,6 +20,9 @@ const STAGGER = ["stagger-0", "stagger-1", "stagger-2", "stagger-3", "stagger-4"
  */
 export function OutstandingByAgeChart({ data }: OutstandingByAgeChartProps) {
   const [activeBucket, setActiveBucket] = useState<string | null>(null);
+  // A gradient is referenced by id, so two of these on one page would collide
+  // on a hardcoded one.
+  const gradientId = useId();
 
   const max = Math.max(...data.map((d) => d.amountCents), 1);
   const total = data.reduce((sum, d) => sum + d.amountCents, 0);
@@ -28,7 +31,25 @@ export function OutstandingByAgeChart({ data }: OutstandingByAgeChartProps) {
   const cornerRadius = height / 2;
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex h-full flex-col gap-1">
+      {/*
+       * The bars carry the same teal-to-blue ramp as the primary CTAs
+       * (`.cta-gradient-slide`), rather than the flat warning orange they
+       * used to. Declared once here and referenced by every bar.
+       *
+       * Object-bounding-box units, so each bar runs the full ramp over its
+       * own length the way a button does over its own width — with user-space
+       * units a short bucket would be cut off partway and read as a different
+       * colour rather than a shorter bar.
+       */}
+      <svg aria-hidden="true" focusable="false" className="absolute h-0 w-0">
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="var(--color-brand-teal)" />
+            <stop offset="100%" stopColor="var(--color-brand-blue)" />
+          </linearGradient>
+        </defs>
+      </svg>
       {data.map((d, i) => {
         // Floor tiny-but-nonzero amounts to a visible pill width so they
         // don't disappear next to a much larger bucket — but a genuinely
@@ -88,7 +109,7 @@ export function OutstandingByAgeChart({ data }: OutstandingByAgeChartProps) {
                 width={barWidth}
                 height={height}
                 rx={cornerRadius}
-                fill="var(--color-warning)"
+                fill={`url(#${gradientId})`}
                 className={cn(
                   "chart-bar-grow-x transition-opacity duration-200 ease-out",
                   STAGGER[i] ?? "stagger-5",
@@ -101,7 +122,7 @@ export function OutstandingByAgeChart({ data }: OutstandingByAgeChartProps) {
           </div>
         );
       })}
-      <div className="mt-2 flex items-center justify-between border-t border-border pt-3 text-sm font-semibold">
+      <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-sm font-semibold">
         <span className="text-text-primary">Total Outstanding</span>
         <span className="tabular-nums text-text-primary">{formatCentsAsCurrency(total)}</span>
       </div>

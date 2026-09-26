@@ -112,10 +112,181 @@
   --shadow-popover: var(--shadow-popover);
 }
 
+/*
+ * Global zoom. Type, spacing, icons and radii are all expressed in rem, so
+ * the root font size is the one knob that scales the entire interface — 110%
+ * of the 16px browser default is 17.6px. Anything written in raw px (a few
+ * arbitrary `[...]` utilities) deliberately stays put.
+ */
+html {
+  font-size: 110%;
+}
+
 body {
   background: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
+}
+
+/*
+ * Thick-glass surface for floating panels (the top bar's notification popup).
+ *
+ * The look being chased is a real slab of glass — a lit rim, a cool tint
+ * where the glass is thick, a specular sweep across the face — rather than
+ * the flat translucent film a plain `backdrop-filter: blur()` produces. Four
+ * layers do that work, and all four are needed; drop one and it reads as a
+ * sticker again:
+ *
+ *   1. a light blur behind it, so it's CLEAR glass, not frosted
+ *   2. a diagonal tint, near-white at the top-left falling to brand blue at
+ *      the bottom-right, which is how a curved edge picks up colour
+ *   3. inset shadows that give the pane thickness instead of a hairline
+ *   4. `::before` for the lit rim and `::after` for the specular sweep
+ *
+ * Kept as component classes rather than utilities because the pseudo-element
+ * layers can't be expressed as ones, and because the `backdrop-filter` needs
+ * a paired `@supports` fallback that belongs in exactly one place.
+ *
+ * The tension here is text. Real glass is clear; clear glass over arbitrary
+ * content destroys contrast on small secondary text. The body tint below is
+ * the most transparent setting that still holds `--color-text-secondary`
+ * legible over a photo — turn it down further and the panel wins on looks
+ * and loses on reading.
+ */
+.glass-panel {
+  /* Deliberately does NOT set `position`. This file's rules come after
+     Tailwind's utilities, so a `position: relative` here would quietly beat
+     the `fixed` / `sm:absolute` the panel places itself with. The caller
+     positions the element; this only needs its own stacking context so the
+     rim and specular layers sit above the pane's background. */
+  isolation: isolate;
+  border: 0;
+  background-color: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  background-image: linear-gradient(
+    145deg,
+    color-mix(in srgb, #ffffff 70%, transparent) 0%,
+    color-mix(in srgb, #ffffff 30%, transparent) 42%,
+    color-mix(in srgb, var(--color-brand-blue) 10%, transparent) 100%
+  );
+  box-shadow:
+    /* Cast shadow — deeper than a card's, because the slab sits well above the page. */
+    0 24px 48px -14px rgb(16 24 40 / 0.3),
+    0 8px 18px -10px rgb(16 24 40 / 0.18),
+    /* Thickness: light pooling under the top face, blue gathering at the base. */
+    inset 0 18px 30px -22px rgb(255 255 255 / 0.95),
+    inset 0 -26px 36px -28px color-mix(in srgb, var(--color-brand-blue) 60%, transparent);
+}
+
+/*
+ * The rim. A gradient ring rather than a flat border: bright white along the
+ * top-left where the light lands, brand blue along the bottom-right where
+ * the glass thickens. Painted as a border-box gradient with the padding-box
+ * masked out, which is the only way to get a gradient on a border.
+ */
+.glass-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(
+    145deg,
+    rgb(255 255 255 / 0.98) 0%,
+    rgb(255 255 255 / 0.5) 30%,
+    color-mix(in srgb, var(--color-brand-blue) 28%, transparent) 70%,
+    color-mix(in srgb, var(--color-brand-blue) 62%, transparent) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+/*
+ * Specular sweep. Sits ABOVE the content on purpose — a highlight is light
+ * reflecting off the front face of the glass, so it falls across whatever is
+ * behind it. Kept faint enough that it never washes the text out.
+ */
+.glass-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    145deg,
+    rgb(255 255 255 / 0.55) 0%,
+    rgb(255 255 255 / 0.16) 6%,
+    transparent 16%,
+    transparent 100%
+  );
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-panel {
+    /* Clear glass: only enough blur to soften what's behind, plus the
+       saturation and brightness lift that real glass gives its backdrop. */
+    background-color: color-mix(in srgb, var(--color-surface) 46%, transparent);
+    -webkit-backdrop-filter: blur(7px) saturate(190%) brightness(1.08);
+    backdrop-filter: blur(7px) saturate(190%) brightness(1.08);
+  }
+}
+
+/* Dividers and hover fills inside the pane. Solid `--color-border` and
+   `--color-surface-muted` read as opaque bands laid over the glass, which
+   breaks the illusion that the pane is one piece. */
+.glass-divide > * + * {
+  border-top-color: rgb(255 255 255 / 0.55);
+}
+
+.glass-row:hover,
+.glass-row:focus-visible {
+  background-color: rgb(255 255 255 / 0.45);
+}
+
+/*
+ * Treatment-stepper connectors.
+ *
+ * Each gap between two markers is drawn as two half-width spans either side
+ * of the marker circle, so a single gradient has to be shared across both
+ * halves or the colour would jump at every step. Each half therefore paints
+ * the full ramp at 200% width and shows its own half of it: the span on a
+ * marker's right shows the start, the span on the next marker's left shows
+ * the end.
+ *
+ * Colours come from the two markers the gap joins — green for a completed
+ * step, brand blue for the one in progress, grey for anything still ahead —
+ * so the line reads as the patient's progress flowing into where they are
+ * now, rather than as a flat rule that happens to be green.
+ */
+.stepper-gap {
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+}
+.stepper-gap-start { background-position: 0% 0; }
+.stepper-gap-end { background-position: 100% 0; }
+
+.stepper-gap-done-done {
+  background-image: linear-gradient(90deg, var(--color-success), var(--color-success));
+}
+.stepper-gap-done-current {
+  background-image: linear-gradient(90deg, var(--color-success), var(--color-brand-blue));
+}
+.stepper-gap-done-upcoming {
+  background-image: linear-gradient(90deg, var(--color-success), var(--color-border-strong));
+}
+.stepper-gap-current-upcoming {
+  background-image: linear-gradient(90deg, var(--color-brand-blue), var(--color-border-strong));
+}
+.stepper-gap-upcoming-upcoming {
+  background-image: linear-gradient(90deg, var(--color-border-strong), var(--color-border-strong));
 }
 
 /* Consistent, visible focus ring across the app using brand blue. */
@@ -349,18 +520,31 @@ body {
  * currently sits, so hovering elsewhere never loses your place.
  */
 .nav-pill {
+  /*
+   * How far apart two nav rows sit: the pill's own height (`h-9`, 2.25rem)
+   * plus the list's `gap-0.5` (0.125rem).
+   *
+   * In rem, deliberately. These offsets used to be hardcoded pixels — 38px,
+   * 76px, and so on — which matched exactly as long as the root font size was
+   * the browser default. It isn't any more (see the `html` rule above), so
+   * the rows grew, the px stride did not, and the highlight crept further up
+   * the further down the rail you clicked. Anything derived from a rem-sized
+   * row has to be rem itself.
+   */
+  --nav-stride: 2.375rem;
+
   transition:
     transform 380ms cubic-bezier(0.16, 1, 0.3, 1),
     opacity 200ms ease-out;
 }
-.nav-pos-0 { transform: translateY(0px); }
-.nav-pos-1 { transform: translateY(38px); }
-.nav-pos-2 { transform: translateY(76px); }
-.nav-pos-3 { transform: translateY(114px); }
-.nav-pos-4 { transform: translateY(152px); }
-.nav-pos-5 { transform: translateY(190px); }
-.nav-pos-6 { transform: translateY(228px); }
-.nav-pos-7 { transform: translateY(266px); }
+.nav-pos-0 { transform: translateY(0); }
+.nav-pos-1 { transform: translateY(calc(var(--nav-stride) * 1)); }
+.nav-pos-2 { transform: translateY(calc(var(--nav-stride) * 2)); }
+.nav-pos-3 { transform: translateY(calc(var(--nav-stride) * 3)); }
+.nav-pos-4 { transform: translateY(calc(var(--nav-stride) * 4)); }
+.nav-pos-5 { transform: translateY(calc(var(--nav-stride) * 5)); }
+.nav-pos-6 { transform: translateY(calc(var(--nav-stride) * 6)); }
+.nav-pos-7 { transform: translateY(calc(var(--nav-stride) * 7)); }
 
 @media (prefers-reduced-motion: reduce) {
   .nav-pill {
@@ -804,5 +988,29 @@ body {
   .auth-cta:hover:not(:disabled),
   .auth-check-btn:active .auth-check {
     transform: none;
+  }
+}
+
+/*
+ * 44px hit area for inline text CTAs, phones only.
+ *
+ * Links like "View all", "Show more" and the back links render ~22px tall —
+ * half the smallest reliable touch target (WCAG 2.5.5 / Apple HIG). This
+ * pads the hit area out around the text without moving the text itself, so
+ * nothing shifts visually; `inline-flex` is what lets the taller box keep
+ * the label centred.
+ *
+ * Dropped from `sm` up: on a pointer device the small target is not a
+ * problem, and a 44px floor there would loosen dense card headers.
+ */
+.touch-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+@media (min-width: 40rem) {
+  .touch-link {
+    min-height: 0;
   }
 }

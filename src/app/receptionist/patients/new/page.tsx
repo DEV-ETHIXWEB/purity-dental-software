@@ -14,7 +14,7 @@ export default function RegisterPatientPage() {
       <div>
         <Link
           href="/receptionist/patients"
-          className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
+          className="touch-link mb-3 gap-1.5 text-sm font-medium text-text-secondary hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to Patients

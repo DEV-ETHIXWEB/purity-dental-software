@@ -31,11 +31,45 @@ describe("patientRegistrationSchema", () => {
           "sex",
           "phone",
           "email",
-          "insuranceProvider",
-          "insurancePlan",
         ]),
       );
+      // Insurance is deliberately absent from that list — see below.
+      expect(paths).not.toContain("insuranceProvider");
+      expect(paths).not.toContain("insurancePlan");
     }
+  });
+
+  it("accepts a self-pay patient with no insurance on file", () => {
+    // The form used to mark both insurance fields required, which made a
+    // patient without cover impossible to register at all — even though both
+    // columns are nullable in the schema.
+    const result = patientRegistrationSchema.safeParse({
+      firstName: "Jo",
+      lastName: "Nakamura",
+      dateOfBirth: "1991-03-14",
+      sex: "OTHER",
+      phone: "(555) 123-4567",
+      email: "jo@example.com",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.insuranceProvider).toBeUndefined();
+      expect(result.data.insurancePlan).toBeUndefined();
+    }
+  });
+
+  it("still rejects an insurance provider that is too long", () => {
+    const result = patientRegistrationSchema.safeParse({
+      firstName: "Jo",
+      lastName: "Nakamura",
+      dateOfBirth: "1991-03-14",
+      sex: "OTHER",
+      phone: "(555) 123-4567",
+      email: "jo@example.com",
+      insuranceProvider: "x".repeat(81),
+    });
+    expect(result.success).toBe(false);
   });
 
   it("rejects an empty first name", () => {

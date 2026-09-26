@@ -23,6 +23,7 @@ import { treatmentPlanForPatient } from "@/lib/data/treatment";
 import { appointmentsForPatient } from "@/lib/data/appointments";
 import { patientRecords } from "@/lib/data/clinical-records";
 import { listProviders } from "@/lib/data/providers";
+import { clinicTimeZone } from "@/lib/data/organization";
 
 export const metadata: Metadata = {
   title: "My Care",
@@ -43,6 +44,7 @@ const ROW_CLASSES =
 
 export default async function PatientCarePage() {
   const session = await requirePageRole(["PATIENT"]);
+  const timeZone = await clinicTimeZone(session.user.organizationId);
   const patient = await getPatientForUser(session.user.id);
   if (!patient) notFound();
 
@@ -65,7 +67,15 @@ export default async function PatientCarePage() {
     providers.find((p) => p.role === "DENTIST") ??
     providers[0] ??
     null;
-  const alternateProviders = providers.filter((p) => p.id !== currentProvider?.id);
+  /*
+   * Dentists only. The "Switch your dentist" list was offering every
+   * clinician in the practice, hygienists included — a patient could ask for
+   * a hygienist to become their dentist, which isn't a thing the practice can
+   * agree to.
+   */
+  const alternateProviders = providers.filter(
+    (p) => p.role === "DENTIST" && p.id !== currentProvider?.id,
+  );
 
   const openPlanItems = [...plan]
     .filter((i) => i.status !== "DECLINED")
@@ -89,8 +99,17 @@ export default async function PatientCarePage() {
         <p className="text-sm text-text-secondary">Your oral health overview and care details.</p>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-        <div className="flex flex-col gap-6 lg:col-span-2">
+      {/*
+       * The columns are balanced by content, then held to a common bottom.
+       *
+       * They used to be ~1030px against ~630px, which left a 400px ragged
+       * edge that no amount of stretching fixed — forcing it just turned the
+       * last card into an empty box. "Quick actions" moved across to even
+       * them up, and `[&>*:last-child]:flex-1` on each column lets the final
+       * card absorb what little is left over.
+       */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="flex flex-col gap-6 lg:col-span-2 [&>*:last-child]:flex-1">
           <Card className="animate-rise-in stagger-1 transition-shadow duration-300 ease-out hover:shadow-card-hover">
             <CardHeader>
               <CardTitle>Your teeth at a glance</CardTitle>
@@ -120,31 +139,6 @@ export default async function PatientCarePage() {
             </CardContent>
           </Card>
 
-          <Card className="animate-rise-in stagger-2 transition-shadow duration-300 ease-out hover:shadow-card-hover">
-            <CardHeader>
-              <CardTitle>Quick actions</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-3">
-              <ul className="grid grid-cols-3 gap-2.5">
-                {QUICK_ACTIONS.map(({ href, label, Icon }) => (
-                  <li key={label}>
-                    <Link
-                      href={href}
-                      className="group flex h-full min-h-11 flex-col items-center justify-center gap-1.5 rounded-[var(--radius-lg)] border border-border px-2 py-3 text-center transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:bg-surface-muted hover:shadow-card active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
-                    >
-                      <Icon
-                        className="h-5 w-5 shrink-0 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:group-hover:scale-100"
-                        aria-hidden="true"
-                      />
-                      <span className="text-xs font-medium leading-snug text-text-primary">
-                        {label}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
 
           {openPlanItems.length > 0 && (
             <Link href="#treatment-plan" className={ROW_CLASSES}>
@@ -199,7 +193,7 @@ export default async function PatientCarePage() {
           </section>
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 [&>*:last-child]:flex-1">
           <section id="forms" className="flex scroll-mt-4 flex-col gap-3">
             <h2 className="text-[15px] font-semibold tracking-tight text-text-primary">
               Forms to sign
@@ -214,8 +208,35 @@ export default async function PatientCarePage() {
             <PatientRecordsCard
               prescriptions={records.prescriptions}
               documents={records.documents}
+              timeZone={timeZone}
             />
           </section>
+
+          <Card className="animate-rise-in stagger-2 transition-shadow duration-300 ease-out hover:shadow-card-hover">
+            <CardHeader>
+              <CardTitle>Quick actions</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-3">
+              <ul className="grid grid-cols-3 gap-2.5">
+                {QUICK_ACTIONS.map(({ href, label, Icon }) => (
+                  <li key={label}>
+                    <Link
+                      href={href}
+                      className="group flex h-full min-h-11 flex-col items-center justify-center gap-1.5 rounded-[var(--radius-lg)] border border-border px-2 py-3 text-center transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:bg-surface-muted hover:shadow-card active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
+                    >
+                      <Icon
+                        className="h-5 w-5 shrink-0 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:group-hover:scale-100"
+                        aria-hidden="true"
+                      />
+                      <span className="text-xs font-medium leading-snug text-text-primary">
+                        {label}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
 
           {currentProvider && (
             <Card className="animate-rise-in stagger-4 transition-shadow duration-300 ease-out hover:shadow-card-hover">

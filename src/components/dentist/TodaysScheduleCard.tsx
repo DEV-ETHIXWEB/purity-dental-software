@@ -12,6 +12,8 @@ export interface TodaysScheduleCardProps {
   basePath?: string;
   /** Route to the full schedule page. */
   scheduleHref: string;
+  /** The practice's timezone — Server Components can't read `useClinicTimeZone()`, so their parent passes it down. */
+  timeZone: string;
 }
 
 /**
@@ -21,7 +23,7 @@ export interface TodaysScheduleCardProps {
  * completion folded into the header as plain text rather than its own
  * large visual.
  */
-export function TodaysScheduleCard({ appointments, completed, basePath = "", scheduleHref }: TodaysScheduleCardProps) {
+export function TodaysScheduleCard({ appointments, completed, basePath = "", scheduleHref, timeZone }: TodaysScheduleCardProps) {
   const total = appointments.length;
 
   return (
@@ -54,7 +56,7 @@ export function TodaysScheduleCard({ appointments, completed, basePath = "", sch
         ) : (
           <ul className="divide-y divide-border">
             {appointments.map((appt) => (
-              <AppointmentListItem key={appt.id} appointment={appt} basePath={basePath} />
+              <AppointmentListItem key={appt.id} appointment={appt} basePath={basePath} timeZone={timeZone} />
             ))}
           </ul>
         )}

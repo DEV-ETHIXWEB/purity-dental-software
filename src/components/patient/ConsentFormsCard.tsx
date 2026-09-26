@@ -12,6 +12,8 @@ import { SignatureIconFilled } from "@/components/ui/icons/purity-icons";
 import { cn } from "@/lib/cn";
 import { signConsentForm } from "@/lib/actions/clinical-records";
 import type { ConsentForm } from "@/generated/prisma/client";
+import { formatClinicDate } from "@/lib/datetime";
+import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 
 export interface ConsentFormsCardProps {
   forms: ConsentForm[];
@@ -25,6 +27,7 @@ const STAGGER = ["stagger-0", "stagger-1", "stagger-2", "stagger-3", "stagger-4"
  * than implying a legally binding e-signature the app doesn't provide.
  */
 export function ConsentFormsCard({ forms }: ConsentFormsCardProps) {
+  const timeZone = useClinicTimeZone();
   const router = useRouter();
   const [openForm, setOpenForm] = useState<ConsentForm | null>(null);
   const [signature, setSignature] = useState("");
@@ -91,7 +94,7 @@ export function ConsentFormsCard({ forms }: ConsentFormsCardProps) {
                 <p className="truncate text-sm font-medium text-text-primary">{form.title}</p>
                 <p className="truncate text-xs text-text-secondary">
                   {signed && form.signedAt
-                    ? `Signed ${form.signedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                    ? `Signed ${formatClinicDate(form.signedAt, timeZone)}`
                     : "Needs your signature"}
                 </p>
               </div>

@@ -64,6 +64,15 @@ enum InvoicePaymentMethod {
   CASH
 }
 
+/// Whether someone is at their chair or stepped away. Self-set from the
+/// Settings profile card — this is presence, not account access; a disabled
+/// account is `User.isActive = false`, which is a different thing entirely
+/// and only the front desk can change it.
+enum UserPresence {
+  AVAILABLE
+  AWAY
+}
+
 enum PatientSex {
   MALE
   FEMALE
@@ -73,6 +82,14 @@ enum PatientSex {
 
 enum PatientStatus {
   ACTIVE
+  /// Course of treatment finished. The record stays on file and fully
+  /// readable — this is a patient the practice is no longer actively
+  /// treating, not one it has closed.
+  COMPLETED
+  /// Archived. Set by "Remove" on the patients list, and reversible from the
+  /// same menu: nothing is deleted, the record just drops out of the default
+  /// view. Deleting a patient row would cascade through their appointments,
+  /// invoices, documents and consent forms, which is why no path does it.
   INACTIVE
 }
 
@@ -86,6 +103,14 @@ model Organization {
   id        String   @id @default(cuid())
   name      String
   timezone  String   @default("America/New_York")
+
+  /// Practice contact details, shown on invoices and editable by an admin
+  /// from Practice settings. Nullable because a fresh organization has none
+  /// of it until someone fills it in.
+  phone       String?
+  email       String?
+  addressLine String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -124,6 +149,10 @@ model User {
   /// `src/lib/auth/password.ts` for hashing/verification.
   passwordHash String
 
+  /// Presence, shown as a dot on this user's avatar. Defaults to available
+  /// so an account that never touches it reads the way it always has.
+  presence UserPresence @default(AVAILABLE)
+
   /// Soft-disable switch for an account (e.g. an offboarded staff member).
   /// Session validation and login both must treat `isActive: false` as
   /// unauthenticated — see `src/lib/auth/session.ts`.
@@ -136,6 +165,35 @@ model User {
   /// per-user rather than in localStorage so it follows the account across
   /// devices and a cleared browser doesn't replay the intro.
   onboardedAt DateTime?
+
+  /// Per-person exceptions to this user's role permissions, keyed by the
+  /// permission ids in `src/lib/auth/permissions.ts` (e.g.
+  /// `{"billing.manage": true, "messaging.grant": false}`).
+  ///
+  /// Only exceptions live here — a key that is absent falls back to the
+  /// role's default, so changing a role's defaults in code takes effect for
+  /// everyone who was never given an override. JSON rather than a join
+  /// table because the permission set is defined in code and changes with
+  /// the product, not with data.
+  permissionOverrides Json?
+
+  /// Per-account delivery toggles, keyed by the preference ids the Settings
+  /// page renders (e.g. `{"notif-billing": false}`). Stored as JSON rather
+  /// than a column per toggle because each portal offers a different set and
+  /// they change with the UI. A missing key means "on" — the product default
+  /// is to notify, so an account that has never touched Settings behaves
+  /// exactly as it did before this column existed.
+  notificationPreferences Json?
+
+  /// Profile photo bytes, uploaded from Settings.
+  ///
+  /// In the row for the same reason `Document.data` is: this deployment has
+  /// no blob store, and a "Change photo" button that only records a filename
+  /// is the dead control this replaces. Size is capped at upload. When set,
+  /// `avatarUrl` points at `/api/profile-photo/<id>`, so every existing read
+  /// path keeps working unchanged.
+  photoData     Bytes?
+  photoMimeType String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -218,6 +276,19 @@ model Patient {
   dateOfBirth    DateTime
   sex            PatientSex  @default(UNKNOWN)
   status         PatientStatus @default(ACTIVE)
+  /// Whether this patient may start/continue their care-team message thread
+  /// (the Patient portal's Messages page). Granted and revoked by the front
+  /// desk, so a practice can decide per patient who gets a direct line to the
+  /// hygienist rather than opening it to everyone on registration.
+  ///
+  /// Defaults to false: a newly registered patient has no messaging until
+  /// reception turns it on. Patients who predate this column were backfilled
+  /// to true by its migration so existing threads kept working.
+  ///
+  /// Gates the PATIENT side only. Staff can always open a thread with a
+  /// patient — revoking access stops the patient replying, it does not hide
+  /// the history from either side.
+  canMessageCareTeam Boolean @default(false)
   phone          String?
   email          String?
   photoUrl       String?

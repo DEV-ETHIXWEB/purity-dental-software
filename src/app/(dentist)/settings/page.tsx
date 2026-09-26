@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ProfileSettingsCard } from "@/components/shell/ProfileSettingsCard";
 import { NotificationPreferencesCard } from "@/components/shell/NotificationPreferencesCard";
 import { requirePageRole } from "@/lib/auth/require-portal";
+import { getNotificationPreferences } from "@/lib/data/account";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -10,7 +11,8 @@ export const metadata: Metadata = {
 
 export default async function SettingsPage() {
   const session = await requirePageRole(["DENTIST", "ADMIN"]);
-  const { name, email, phone, avatarUrl } = session.user;
+  const notificationPreferences = await getNotificationPreferences(session.user.id);
+  const { name, email, phone, avatarUrl, presence } = session.user;
 
   return (
     <div className="flex flex-col gap-6">
@@ -19,9 +21,10 @@ export default async function SettingsPage() {
         <p className="text-sm text-text-secondary">Manage your profile and preferences.</p>
       </div>
 
-      <ProfileSettingsCard name={name} email={email} phone={phone ?? ""} roleLabel="Dentist" photoUrl={avatarUrl} />
+      <ProfileSettingsCard name={name} email={email} phone={phone ?? ""} roleLabel="Dentist" photoUrl={avatarUrl} presence={presence} />
 
       <NotificationPreferencesCard
+        preferences={notificationPreferences}
         items={[
           { id: "notif-appts", label: "New and updated appointments" },
           { id: "notif-followups", label: "Follow-up reminders" },

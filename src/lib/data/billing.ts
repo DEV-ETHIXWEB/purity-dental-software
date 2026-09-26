@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { Invoice, InvoiceLineItem, Patient, User } from "@/generated/prisma/client";
+import { clinicStartOfDay } from "@/lib/datetime";
 
 /**
  * Real Prisma-backed billing queries — replaces the fixed invoice fixtures
@@ -305,6 +306,17 @@ export interface PatientBillingOverview {
   nextDueAt: Date | null;
   /** Whether any unsettled invoice is already past its due date. */
   hasOverdue: boolean;
+  /**
+   * The part of `amountDueCents` that is genuinely past due.
+   *
+   * The Bills page used to stamp "Overdue since <date>" across the whole
+   * balance whenever any single invoice had slipped — so a patient owing
+   * $267.21, of which only $180 was late, was told the entire amount was
+   * overdue. Now the two are separate numbers.
+   */
+  overdueCents: number;
+  /** Due date of the earliest genuinely-overdue invoice, or null when none is. */
+  overdueSince: Date | null;
   insurance: {
     provider: string | null;
     plan: string | null;
@@ -331,6 +343,7 @@ export interface PatientBillingOverview {
 export async function patientBillingOverview(
   organizationId: string,
   patientId: string,
+  timeZone: string,
 ): Promise<PatientBillingOverview | null> {
   const patient = await prisma.patient.findFirst({ where: { id: patientId, organizationId } });
   if (!patient) return null;
@@ -341,7 +354,7 @@ export async function patientBillingOverview(
     prisma.invoice.findMany({
       where: { organizationId, patientId, status: { in: ["PENDING", "OVERDUE"] } },
       orderBy: { dueAt: "asc" },
-      select: { dueAt: true, status: true },
+      select: { dueAt: true, status: true, totalCents: true },
     }),
     prisma.invoice.aggregate({
       where: { organizationId, patientId, issuedAt: { gte: yearStart } },
@@ -351,12 +364,23 @@ export async function patientBillingOverview(
 
   const annualMaxCents = patient.insuranceAnnualMaxCents;
   const usedCents = coveredThisYear._sum.insuranceAdjustmentCents ?? 0;
-  const now = new Date();
+
+  /*
+   * An invoice due today is not late yet. Comparing against `new Date()`
+   * made a bill "overdue" from midnight on its own due date, hours before
+   * the patient had any chance to pay it — so the cutoff is the start of the
+   * practice's today, and only invoices due strictly before it count.
+   */
+  const todayStart = clinicStartOfDay(new Date(), timeZone);
+  const overdueInvoices = unsettled.filter((i) => i.status === "OVERDUE" || i.dueAt < todayStart);
+  const overdueCents = overdueInvoices.reduce((sum, i) => sum + i.totalCents, 0);
 
   return {
     amountDueCents: patient.balanceCents,
     nextDueAt: unsettled[0]?.dueAt ?? null,
-    hasOverdue: unsettled.some((i) => i.status === "OVERDUE" || i.dueAt < now),
+    hasOverdue: overdueInvoices.length > 0,
+    overdueCents,
+    overdueSince: overdueInvoices[0]?.dueAt ?? null,
     insurance: {
       provider: patient.insuranceProvider,
       plan: patient.insurancePlan,

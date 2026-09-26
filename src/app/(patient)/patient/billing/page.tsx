@@ -4,6 +4,7 @@ import { PatientBillingView } from "./PatientBillingView";
 import { requirePageRole } from "@/lib/auth/require-portal";
 import { getPatientForUser } from "@/lib/data/patients";
 import { listInvoicesForPatient, patientBillingOverview } from "@/lib/data/billing";
+import { clinicTimeZone } from "@/lib/data/organization";
 
 export const metadata: Metadata = {
   title: "Bills",
@@ -12,12 +13,13 @@ export const metadata: Metadata = {
 
 export default async function PatientBillingPage() {
   const session = await requirePageRole(["PATIENT"]);
+  const timeZone = await clinicTimeZone(session.user.organizationId);
   const patient = await getPatientForUser(session.user.id);
   if (!patient) notFound();
 
   const [myInvoices, overview] = await Promise.all([
     listInvoicesForPatient(session.user.organizationId, patient.id),
-    patientBillingOverview(session.user.organizationId, patient.id),
+    patientBillingOverview(session.user.organizationId, patient.id, timeZone),
   ]);
   if (!overview) notFound();
 
