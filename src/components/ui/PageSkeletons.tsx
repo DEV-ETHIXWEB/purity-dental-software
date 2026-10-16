@@ -2,8 +2,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { PageHeaderSkeleton, Skeleton } from "@/components/ui/Skeleton";
 
 /**
- * Skeleton compositions shaped like this app's three most common data-heavy
- * page layouts (dashboard / table / schedule), used by each portal's
+ * Skeleton compositions shaped like this app's common page layouts
+ * (dashboard / table / schedule / detail / form), used by each portal's
  * `loading.tsx`. Structural resemblance to the real layout — not pixel
  * accuracy — is the goal, so the page doesn't visibly jump once real data
  * arrives.
@@ -121,6 +121,109 @@ export function ScheduleSkeleton() {
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * A record page: a back link and title, then a wide column of cards beside
+ * a narrower one. Covers the patient and staff profiles and the invoice
+ * detail view.
+ */
+export function DetailSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-4 w-40" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          {[0, 1].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-5 w-40" />
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                {[0, 1, 2, 3].map((r) => (
+                  <Skeleton key={r} className="h-4 w-full" />
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {[0, 1, 2, 3, 4].map((r) => (
+              <Skeleton key={r} className="h-4 w-full" />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A settings or data-entry page: a header, then cards of labelled fields
+ * two-up, ending in a save button.
+ */
+export function FormSkeleton({ sections = 2 }: { sections?: number }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeaderSkeleton />
+
+      {Array.from({ length: sections }, (_, i) => (
+        <Card key={i}>
+          <CardHeader>
+            <Skeleton className="h-5 w-36" />
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((f) => (
+              <div key={f} className="flex flex-col gap-1.5">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+
+      <Skeleton className="h-10 w-32" />
+    </div>
+  );
+}
+
+/** A two-pane messaging view: conversation list beside an open thread. */
+export function MessagesSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeaderSkeleton />
+      <Card className="overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-[18rem_1fr]">
+          <div className="flex flex-col divide-y divide-border border-b border-border lg:border-b-0 lg:border-r">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3 p-4">
+                <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex min-h-[320px] flex-col gap-3 p-4">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-12 w-3/4" />
+            ))}
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
