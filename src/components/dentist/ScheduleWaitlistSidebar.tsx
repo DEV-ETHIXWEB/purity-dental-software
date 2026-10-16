@@ -52,25 +52,31 @@ export function ScheduleWaitlistSidebar({ entries, bookingId, onBook }: Schedule
           {entries.map((entry, i) => {
             const name = patientFullName(entry.patient);
             const isBooking = bookingId === entry.id;
+            // `onBook` is only supplied to someone who may book (`schedule.manage`),
+            // and a drag with nothing to accept it is a grab cursor that goes nowhere.
+            const canDrag = Boolean(onBook);
             return (
               <li
                 key={entry.id}
-                draggable
+                draggable={canDrag}
                 // The waitlist entry id, not the patient id: the drop target
                 // books this specific request, and the action re-reads the
                 // patient from the entry rather than trusting the wire.
                 onDragStart={(e) => writeDragPayload(e.dataTransfer, { kind: "waitlist", id: entry.id })}
                 className={cn(
-                  "animate-rise-in group/entry cursor-grab rounded-[var(--radius-md)] border border-border bg-surface p-3 shadow-card active:cursor-grabbing",
+                  "animate-rise-in group/entry rounded-[var(--radius-md)] border border-border bg-surface p-3 shadow-card",
+                  canDrag && "cursor-grab active:cursor-grabbing",
                   "transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:shadow-card-hover motion-reduce:hover:translate-y-0",
                   STAGGER[i] ?? "stagger-7",
                 )}
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <GripVertical
-                    className="h-4 w-4 shrink-0 text-text-secondary/50 transition-colors duration-200 ease-out group-hover/entry:text-text-secondary"
-                    aria-hidden="true"
-                  />
+                  {canDrag && (
+                    <GripVertical
+                      className="h-4 w-4 shrink-0 text-text-secondary/50 transition-colors duration-200 ease-out group-hover/entry:text-text-secondary"
+                      aria-hidden="true"
+                    />
+                  )}
                   <Avatar name={name} src={entry.patient.photoUrl} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-text-primary">{name}</p>

@@ -3,7 +3,7 @@ import { PortalShell } from "@/components/shell/PortalShell";
 import { PermissionsProvider } from "@/components/auth/Permissions";
 import { receptionistShellConfig } from "@/components/shell/nav-config";
 import { requirePortalRole } from "@/lib/auth/require-portal";
-import { permissionListFor } from "@/lib/auth/permissions";
+import { hasPermission, permissionListFor } from "@/lib/auth/permissions";
 import { listFollowUps } from "@/lib/data/patients";
 import { staffNotifications } from "@/lib/data/notifications";
 import { getOrganization } from "@/lib/data/organization";
@@ -22,7 +22,8 @@ export default async function ReceptionistPortalLayout({
     listFollowUps(session.user.organizationId, 1),
     staffNotifications(session.user.organizationId, {
       patientsHref: "/receptionist/patients",
-      billingHref: "/receptionist/billing",
+      // An overdue-invoice row links into Billing, which needs `billing.view`.
+      billingHref: hasPermission(session.user, "billing.view") ? "/receptionist/billing" : undefined,
     }),
     getOrganization(session.user.organizationId),
   ]);

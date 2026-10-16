@@ -3,7 +3,7 @@ import { PortalShell } from "@/components/shell/PortalShell";
 import { PermissionsProvider } from "@/components/auth/Permissions";
 import { hygienistShellConfig } from "@/components/shell/nav-config";
 import { requirePortalRole } from "@/lib/auth/require-portal";
-import { permissionListFor } from "@/lib/auth/permissions";
+import { hasPermission, permissionListFor } from "@/lib/auth/permissions";
 import { listConversations } from "@/lib/data/messaging";
 import { staffNotifications } from "@/lib/data/notifications";
 import { getOrganization } from "@/lib/data/organization";
@@ -18,16 +18,25 @@ export default async function HygienistPortalLayout({
   children: ReactNode;
 }) {
   const session = await requirePortalRole("HYGIENIST");
+  /*
+   * The notification feed links into Messages and Billing, both of which
+   * are permission-gated pages that bounce a viewer without the grant. So
+   * a route is only offered to someone who can follow it — which also keeps
+   * "new message" and "overdue invoice" rows, and what they reveal, out of
+   * the feed of someone who may not see those areas at all.
+   */
+  const canMessage = hasPermission(session.user, "messaging.reply");
+  const canSeeBilling = hasPermission(session.user, "billing.view");
   const [conversations, notifications, organization] = await Promise.all([
     listConversations(session.user.organizationId),
     staffNotifications(session.user.organizationId, {
-      messagesHref: "/hygienist/messages",
+      messagesHref: canMessage ? "/hygienist/messages" : undefined,
       patientsHref: "/hygienist/patients",
-      billingHref: "/hygienist/billing",
+      billingHref: canSeeBilling ? "/hygienist/billing" : undefined,
     }),
     getOrganization(session.user.organizationId),
   ]);
-  const hasUnread = conversations.some((c) => c.unreadCount > 0);
+  const hasUnread = canMessage && conversations.some((c) => c.unreadCount > 0);
 
   return (
     /*
@@ -43,6 +52,8 @@ export default async function HygienistPortalLayout({
           hasUnread,
           notifications,
         )}
+        // The bell's "view all" target; undefined falls back to Patients.
+        messagesHref={canMessage ? "/hygienist/messages" : undefined}
       >
         {children}
       </PortalShell>

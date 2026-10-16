@@ -3,7 +3,7 @@ import { PortalShell } from "@/components/shell/PortalShell";
 import { PermissionsProvider } from "@/components/auth/Permissions";
 import { dentistShellConfig } from "@/components/shell/nav-config";
 import { requirePortalRole } from "@/lib/auth/require-portal";
-import { permissionListFor } from "@/lib/auth/permissions";
+import { hasPermission, permissionListFor } from "@/lib/auth/permissions";
 import { listFollowUps } from "@/lib/data/patients";
 import { staffNotifications } from "@/lib/data/notifications";
 import { getOrganization } from "@/lib/data/organization";
@@ -25,7 +25,8 @@ export default async function DentistPortalLayout({
     listFollowUps(session.user.organizationId, 1),
     staffNotifications(session.user.organizationId, {
       patientsHref: "/patients",
-      billingHref: "/billing",
+      // An overdue-invoice row links into Billing, which needs `billing.view`.
+      billingHref: hasPermission(session.user, "billing.view") ? "/billing" : undefined,
     }),
     getOrganization(session.user.organizationId),
   ]);
