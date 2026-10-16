@@ -30,16 +30,21 @@ export function TreatmentPlanTable({ items }: { items: TreatmentPlanItem[] }) {
   }
 
   return (
-    <>
+    <div className="@container">
       {/*
-       * Table on desktop, stacked cards on a phone — the same split
+       * Table when the column it sits in is wide enough, stacked cards when not — the same split
        * `PatientsTable` and `StaffTable` use.
        *
        * The shared `Table` primitive carries `min-w-[640px]`, which is right
-       * for a four-column grid but forces a sideways scroll inside the card
-       * at 375px. Cards carry the same four fields without it.
+       * for a four-column grid but forces a sideways scroll inside a narrow
+       * card. Cards carry the same four fields without it.
+       *
+       * Decided by THIS component's width (`@2xl`), not the viewport's: on the
+       * patient Overview the plan sits in a two-fifths column that is ~400px
+       * wide even on a 1440px desktop, where a viewport breakpoint kept
+       * choosing the table and cropped three of its four columns.
        */}
-      <TableContainer className="hidden md:block">
+      <TableContainer className="hidden @2xl:block">
         <Table>
           <TableHead>
             <TableRow>
@@ -67,7 +72,7 @@ export function TreatmentPlanTable({ items }: { items: TreatmentPlanItem[] }) {
         </Table>
       </TableContainer>
 
-      <ul className="flex flex-col gap-3 md:hidden">
+      <ul className="flex flex-col gap-3 @2xl:hidden">
         {items.map((item) => (
           <li
             key={item.id}
@@ -89,6 +94,6 @@ export function TreatmentPlanTable({ items }: { items: TreatmentPlanItem[] }) {
           </li>
         ))}
       </ul>
-    </>
+    </div>
   );
 }

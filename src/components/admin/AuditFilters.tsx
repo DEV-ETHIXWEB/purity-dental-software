@@ -52,7 +52,9 @@ export function AuditFilters({
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search actions, e.g. appointment or messaging…"
         aria-label="Search activity"
-        className="sm:max-w-sm"
+        // Give the flex-item wrapper a width, or it collapses to ~200px and
+        // cuts the placeholder off.
+        wrapperClassName="sm:w-full sm:max-w-sm"
       />
 
       <select

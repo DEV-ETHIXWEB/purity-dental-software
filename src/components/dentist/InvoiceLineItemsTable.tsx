@@ -51,8 +51,8 @@ export function InvoiceLineItemsTable({
   }
 
   return (
-    <>
-      <TableContainer className="hidden md:block">
+    <div className="@container">
+      <TableContainer className="hidden @2xl:block">
         <Table>
           <TableHead>
             <TableRow>
@@ -83,7 +83,7 @@ export function InvoiceLineItemsTable({
         </Table>
       </TableContainer>
 
-      <ul className="flex flex-col gap-3 md:hidden">
+      <ul className="flex flex-col gap-3 @2xl:hidden">
         {items.map((item) => (
           <li
             key={item.id}
@@ -106,6 +106,6 @@ export function InvoiceLineItemsTable({
           </li>
         ))}
       </ul>
-    </>
+    </div>
   );
 }

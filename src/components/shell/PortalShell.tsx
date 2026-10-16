@@ -81,9 +81,17 @@ export function PortalShell({
      *
      * `h-dvh` (not `h-screen`) so mobile browser chrome collapsing doesn't
      * leave the bottom of the shell cut off.
+     *
+     * `relative` is load-bearing: `overflow-hidden` only clips descendants
+     * whose containing block is inside it, and an `absolute` element (every
+     * `sr-only` live region, every visually hidden checkbox) resolves against
+     * the initial containing block instead when no ancestor is positioned.
+     * Those escaped the shell and stretched the DOCUMENT — on the schedule a
+     * hidden status line deep in the scrolled content made the page scroll
+     * 108px, sliding the whole app up and leaving the bottom exposed.
      */
     <ClinicTimeZoneProvider timeZone={timeZone}>
-      <div className="flex h-dvh overflow-hidden">
+      <div className="relative flex h-dvh overflow-hidden">
         {/* Stretches to the shell's full height as a flex item — no `sticky`
             or `self-start` needed now that the shell is viewport-sized, and
             the profile/log-out footer stays on screen at any scroll position. */}

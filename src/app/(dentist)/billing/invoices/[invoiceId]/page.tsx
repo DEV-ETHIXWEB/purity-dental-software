@@ -40,12 +40,12 @@ export default async function InvoiceDetailPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-4 @xl:flex-row @xl:items-start @xl:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
           <Avatar name={patientFullName(invoice.patient)} src={invoice.patient.photoUrl} size="lg" />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold text-text-primary">{invoiceNumber(invoice)}</h1>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h1 className="whitespace-nowrap text-xl font-semibold text-text-primary">{invoiceNumber(invoice)}</h1>
               <InvoiceStatusBadge status={invoice.status} />
             </div>
             <p className="text-sm text-text-secondary">
@@ -56,7 +56,7 @@ export default async function InvoiceDetailPage({
             )}
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 @xl:justify-end">
           {invoice.status !== "PAID" && <MarkInvoicePaidButton invoiceId={invoice.id} />}
           {invoice.status !== "PAID" && <SendInvoiceReminderButton invoice={invoice} />}
           <a
@@ -69,8 +69,8 @@ export default async function InvoiceDetailPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-3">
+        <Card className="min-w-0 @4xl:col-span-2">
           <CardHeader>
             <CardTitle>Line Items</CardTitle>
           </CardHeader>
@@ -86,13 +86,13 @@ export default async function InvoiceDetailPage({
           <CardContent className="flex flex-col gap-3 text-sm">
             <div className="flex justify-between">
               <span className="text-text-secondary">Issued</span>
-              <span className="text-text-primary">
+              <span className="whitespace-nowrap text-text-primary">
                 {formatClinicDate(invoice.issuedAt, timeZone)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-text-secondary">Due</span>
-              <span className="text-text-primary">
+              <span className="whitespace-nowrap text-text-primary">
                 {formatClinicDate(invoice.dueAt, timeZone)}
               </span>
             </div>

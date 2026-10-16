@@ -30,11 +30,24 @@ export default async function InvoicesLayout({ children }: { children: ReactNode
         <p className="text-sm text-text-secondary">Manage and track patient billing.</p>
       </div>
 
-      <div className="grid grid-cols-1 overflow-hidden rounded-[var(--radius-xl)] border border-border bg-surface md:min-h-[600px] md:grid-cols-[360px_1fr] md:divide-x md:divide-border">
-        <div className="overflow-y-auto">
+      {/*
+        * `minmax(0, 1fr)` rather than `1fr`: a bare `1fr` track has an
+        * implicit `min-content` floor, so a wide child (the line-items table)
+        * pushed the detail pane past the card's edge instead of letting it
+        * scroll inside itself. The list is narrower on tablets so the detail
+        * pane keeps a usable width at 768px.
+        */}
+      <div className="grid grid-cols-1 overflow-hidden rounded-[var(--radius-xl)] border border-border bg-surface md:min-h-[600px] md:grid-cols-[300px_minmax(0,1fr)] md:divide-x md:divide-border lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="min-w-0 overflow-y-auto">
           <InvoicesListPanel invoices={invoices} patients={patients} />
         </div>
-        <div className="overflow-y-auto p-6">{children}</div>
+        {/*
+          * A size container: the detail page lays itself out from THIS
+          * pane's width (`@xl:` etc.), not the viewport's. Its viewport
+          * breakpoints were firing for a 1000px window while the pane was
+          * ~490px, which is what overlapped the header and cropped Summary.
+          */}
+        <div className="@container min-w-0 overflow-y-auto p-4 sm:p-6">{children}</div>
       </div>
     </div>
   );

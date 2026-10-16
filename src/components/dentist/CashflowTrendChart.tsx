@@ -54,10 +54,10 @@ export function CashflowTrendChart({ data }: CashflowTrendChartProps) {
      */
     <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:overflow-x-visible sm:px-0">
       {/* 540px forced a sideways scroll inside the card on a 375px phone.
-          320px fits the narrowest supported viewport, and the chart is an
+          280px fits a 375px phone's card (~311px of plot) with no scroll, and still the narrowest supported viewport, and the chart is an
           SVG with a viewBox so it scales rather than clipping; the scroller
           above still catches anything narrower. */}
-      <div className="min-w-[320px] sm:min-w-[540px] lg:min-w-0">
+      <div className="min-w-[280px] sm:min-w-[540px] lg:min-w-0">
       <div
         className="relative"
         onMouseLeave={() => setActiveIndex(null)}

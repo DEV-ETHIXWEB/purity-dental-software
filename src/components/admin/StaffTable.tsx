@@ -76,7 +76,10 @@ export function StaffTable({
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search staff by name, email or role…"
           aria-label="Search staff"
-          className="sm:max-w-sm"
+          // The wrapper is a flex item in this row and shrinks to its content
+          // (a ~200px input) unless it is given a width — that cut the
+          // placeholder to "Search staff by name, em" on an iPad.
+          wrapperClassName="sm:w-full sm:max-w-sm"
         />
         {inactiveCount > 0 && (
           <label className="flex cursor-pointer items-center gap-2 text-sm text-text-secondary">
@@ -97,7 +100,10 @@ export function StaffTable({
 
       {/* Desktop table */}
       <TableContainer className="hidden md:block">
-        <Table>
+        {/* `min-w-0`: the primitive's 640px floor plus real cell content made
+            this ~17px wider than its card at 768-1024px, hiding the edge of the
+            Status column behind a scrollbar. */}
+        <Table className="min-w-0">
           <TableHead>
             <TableRow>
               <TableHeaderCell>Name</TableHeaderCell>
@@ -134,7 +140,7 @@ export function StaffTable({
                   <TableCell>
                     <Badge tone={ROLE_TONE[member.role]}>{ROLE_LABELS[member.role]}</Badge>
                   </TableCell>
-                  <TableCell className="text-text-secondary">{member.email}</TableCell>
+                  <TableCell className="max-w-[16rem] truncate text-text-secondary" title={member.email}>{member.email}</TableCell>
                   <TableCell className="text-text-secondary">
                     {overrides === 0 ? (
                       <span className="text-xs">Role defaults</span>
