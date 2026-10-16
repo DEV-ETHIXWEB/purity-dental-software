@@ -24,7 +24,9 @@ const ACTION_CLASSES =
  * The same two routes the help cards offer — message the clinic, or call it —
  * so this adds reach, not a third answer to the same question.
  */
-export function HelpFab({ phoneHref = "tel:+15550100200" }: HelpFabProps) {
+export const FALLBACK_PHONE_HREF = "tel:+15550100200";
+
+export function HelpFab({ phoneHref = FALLBACK_PHONE_HREF }: HelpFabProps) {
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);

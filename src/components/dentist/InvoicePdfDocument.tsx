@@ -8,6 +8,7 @@ const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#111827" },
   header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 24 },
   clinicName: { fontSize: 18, fontWeight: 700, marginBottom: 4 },
+  clinicContact: { fontSize: 9, color: "#52606D", marginBottom: 2 },
   invoiceNumber: { fontSize: 12, color: "#6b7280" },
   metaRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 2 },
   metaLabel: { color: "#6b7280" },
@@ -55,10 +56,24 @@ const styles = StyleSheet.create({
 export function InvoicePdfDocument({
   invoice,
   timeZone,
+  practice,
 }: {
   invoice: InvoiceWithProvider;
   /** The practice's timezone — this renders in a Route Handler, outside any portal shell. */
   timeZone: string;
+  /**
+   * The practice's own details, from Admin > Practice.
+   *
+   * These used to be the hardcoded string "Purity Dental Clinic" with no
+   * contact line at all, which meant the name an admin typed into Practice
+   * settings never reached the one document a patient actually keeps.
+   */
+  practice: {
+    name: string;
+    phone: string | null;
+    email: string | null;
+    addressLine: string | null;
+  };
 }) {
   const subtotalCents = invoice.lineItems.reduce((sum, li) => sum + li.quantity * li.unitPriceCents, 0);
 
@@ -67,7 +82,16 @@ export function InvoicePdfDocument({
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.clinicName}>Purity Dental Clinic</Text>
+            <Text style={styles.clinicName}>{practice.name}</Text>
+            {/* Only the lines the practice has actually filled in. */}
+            {practice.addressLine ? (
+              <Text style={styles.clinicContact}>{practice.addressLine}</Text>
+            ) : null}
+            {[practice.phone, practice.email].filter(Boolean).length > 0 ? (
+              <Text style={styles.clinicContact}>
+                {[practice.phone, practice.email].filter(Boolean).join(" · ")}
+              </Text>
+            ) : null}
             <Text style={styles.invoiceNumber}>Invoice {invoiceNumber(invoice)}</Text>
           </View>
           <View>

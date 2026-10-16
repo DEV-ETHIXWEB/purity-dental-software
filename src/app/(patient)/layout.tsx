@@ -4,7 +4,7 @@ import { patientShellConfig } from "@/components/shell/nav-config";
 import { requirePortalRole } from "@/lib/auth/require-portal";
 import { prisma } from "@/lib/prisma";
 import { hasUnreadForPatient } from "@/lib/data/messaging";
-import { getOrganization } from "@/lib/data/organization";
+import { getPracticeDetails } from "@/lib/data/organization";
 import { DEFAULT_CLINIC_TIMEZONE } from "@/lib/datetime";
 import { patientNotifications } from "@/lib/data/notifications";
 import { PatientOnboarding } from "@/components/patient/PatientOnboarding";
@@ -42,7 +42,7 @@ export default async function PatientPortalLayout({
       where: { id: session.user.id },
       select: { onboardedAt: true },
     }),
-    getOrganization(session.user.organizationId),
+    getPracticeDetails(session.user.organizationId),
   ]);
 
   return (
@@ -59,7 +59,9 @@ export default async function PatientPortalLayout({
       </PortalShell>
 
       {/* Every patient screen, not just the two with a help card. */}
-      <HelpFab />
+      {/* The practice's own number from Admin > Practice, falling back to the
+          placeholder when the field has not been filled in. */}
+      <HelpFab phoneHref={organization?.phone ? `tel:${organization.phone}` : undefined} />
 
       {/* Rendered only for accounts that have never finished it; the
           component itself is `md:hidden`, so phones only. */}

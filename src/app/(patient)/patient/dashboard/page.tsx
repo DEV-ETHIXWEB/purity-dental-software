@@ -18,7 +18,7 @@ import {
 } from "@/components/patient/formatters";
 import { requirePageRole } from "@/lib/auth/require-portal";
 import { getPatientForUser } from "@/lib/data/patients";
-import { getOrganization } from "@/lib/data/organization";
+import { getPracticeDetails } from "@/lib/data/organization";
 import { appointmentsForPatient } from "@/lib/data/appointments";
 import { treatmentPlanForPatient } from "@/lib/data/treatment";
 import { patientBillingOverview } from "@/lib/data/billing";
@@ -39,7 +39,7 @@ export default async function PatientDashboardPage() {
   // Resolved first: the billing overview needs the practice's timezone to
   // decide what counts as overdue, so it can't share a Promise.all with the
   // query that fetches it.
-  const organization = await getOrganization(session.user.organizationId);
+  const organization = await getPracticeDetails(session.user.organizationId);
   const timeZone = organization?.timezone ?? DEFAULT_CLINIC_TIMEZONE;
 
   const [myAppointments, myPlan, billing] = await Promise.all([
@@ -190,7 +190,7 @@ export default async function PatientDashboardPage() {
                   Contact clinic
                 </Link>
                 <a
-                  href="tel:+15550100200"
+                  href={organization?.phone ? `tel:${organization.phone}` : "tel:+15550100200"}
                   className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-lg)] border border-border bg-surface px-4 text-sm font-medium text-text-primary transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-card active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
                 >
                   <PhoneIcon className="h-4 w-4" aria-hidden="true" />

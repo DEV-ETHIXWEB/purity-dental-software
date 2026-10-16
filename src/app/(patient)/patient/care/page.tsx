@@ -23,7 +23,8 @@ import { treatmentPlanForPatient } from "@/lib/data/treatment";
 import { appointmentsForPatient } from "@/lib/data/appointments";
 import { patientRecords } from "@/lib/data/clinical-records";
 import { listProviders } from "@/lib/data/providers";
-import { clinicTimeZone } from "@/lib/data/organization";
+import { getPracticeDetails } from "@/lib/data/organization";
+import { DEFAULT_CLINIC_TIMEZONE } from "@/lib/datetime";
 
 export const metadata: Metadata = {
   title: "My Care",
@@ -44,7 +45,10 @@ const ROW_CLASSES =
 
 export default async function PatientCarePage() {
   const session = await requirePageRole(["PATIENT"]);
-  const timeZone = await clinicTimeZone(session.user.organizationId);
+  // The practice record rather than just its timezone: the "Call the
+  // clinic" link below needs the real number from Admin > Practice.
+  const practice = await getPracticeDetails(session.user.organizationId);
+  const timeZone = practice?.timezone ?? DEFAULT_CLINIC_TIMEZONE;
   const patient = await getPatientForUser(session.user.id);
   if (!patient) notFound();
 
@@ -285,7 +289,7 @@ export default async function PatientCarePage() {
                   Contact clinic
                 </Link>
                 <a
-                  href="tel:+15550100200"
+                  href={practice?.phone ? `tel:${practice.phone}` : "tel:+15550100200"}
                   className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-lg)] border border-border bg-surface px-4 text-sm font-medium text-text-primary transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-card active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
                 >
                   <PhoneIcon className="h-4 w-4" aria-hidden="true" />
