@@ -18,6 +18,7 @@ import type { AppointmentWithPatient } from "@/lib/data/appointments";
 import type { WaitlistEntryWithPatient } from "@/lib/data/waitlist";
 import { cn } from "@/lib/cn";
 import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
+import { useCan } from "@/components/auth/Permissions";
 
 export interface ScheduleBoardProps {
   date: Date;
@@ -57,7 +58,16 @@ export function ScheduleBoard({
 }: ScheduleBoardProps) {
   const router = useRouter();
   const timeZone = useClinicTimeZone();
-  const [bookingOpen, setBookingOpen] = useState(openBookingOnMount);
+  const can = useCan();
+  /*
+   * Booking, dragging a waitlist patient into a slot and moving an existing
+   * appointment are all `schedule.manage`. Without it the board stays a
+   * readable day — the agenda, the upcoming and past tabs and the waitlist
+   * are all still there, minus every way to change them.
+   */
+  const mayManageSchedule = can("schedule.manage");
+  // `?book=1` must not open the booking modal for someone who may not book.
+  const [bookingOpen, setBookingOpen] = useState(openBookingOnMount && mayManageSchedule);
   const [dropNotice, setDropNotice] = useState<{ text: string; tone: "success" | "error" } | null>(null);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -153,9 +163,11 @@ export function ScheduleBoard({
                   <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
                   <TabsTrigger value="past">Past</TabsTrigger>
                 </TabsList>
-                <Button size="sm" onClick={() => setBookingOpen(true)}>
-                  New appointment
-                </Button>
+                {mayManageSchedule && (
+                  <Button size="sm" onClick={() => setBookingOpen(true)}>
+                    New appointment
+                  </Button>
+                )}
               </div>
 
               <TabsContent value="day">
@@ -163,8 +175,8 @@ export function ScheduleBoard({
                   date={date}
                   appointments={appointments}
                   timeZone={timeZone}
-                  onDropWaitlist={bookWaitlistIntoHour}
-                  onMoveAppointment={moveAppointmentToHour}
+                  onDropWaitlist={mayManageSchedule ? bookWaitlistIntoHour : undefined}
+                  onMoveAppointment={mayManageSchedule ? moveAppointmentToHour : undefined}
                   busy={busy}
                 />
               </TabsContent>
@@ -204,10 +216,18 @@ export function ScheduleBoard({
       <div className="lg:col-span-1">
         <Card>
           <CardContent>
-            <ScheduleWaitlistSidebar entries={waitlist} bookingId={bookingId} onBook={bookEntry} />
-            <p className="mt-4 text-xs text-text-secondary">
-              Drag a patient onto any slot, or use &ldquo;Book next opening.&rdquo; Appointments already on the board can be dragged to a different time.
-            </p>
+            <ScheduleWaitlistSidebar
+              entries={waitlist}
+              bookingId={bookingId}
+              onBook={mayManageSchedule ? bookEntry : undefined}
+            />
+            {/* The hint describes controls that aren't there without the
+                permission, so it goes with them. */}
+            {mayManageSchedule && (
+              <p className="mt-4 text-xs text-text-secondary">
+                Drag a patient onto any slot, or use &ldquo;Book next opening.&rdquo; Appointments already on the board can be dragged to a different time.
+              </p>
+            )}
           </CardContent>
         </Card>
         </div>

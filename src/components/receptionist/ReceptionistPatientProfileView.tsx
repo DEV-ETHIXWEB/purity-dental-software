@@ -8,6 +8,7 @@ import { CalendarIconFilled, BillingIconFilled } from "@/components/ui/icons/pur
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { useCan } from "@/components/auth/Permissions";
 import { Input } from "@/components/ui/Input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { ContactDetailsCard } from "@/components/dentist/ContactDetailsCard";
@@ -58,6 +59,9 @@ export function ReceptionistPatientProfileView({
   const timeZone = useClinicTimeZone();
   const router = useRouter();
   const name = patientFullName(patient);
+  const can = useCan();
+  // Editing name and phone writes through `updatePatientDemographics`.
+  const mayEdit = can("patients.manage");
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,10 +125,12 @@ export function ReceptionistPatientProfileView({
           </div>
         </div>
         {!editing ? (
-          <Button variant="ghost" size="sm" onClick={() => setEditing(true)} aria-label="Edit demographics">
-            <Pencil className="h-4 w-4" aria-hidden="true" />
-            Edit
-          </Button>
+          mayEdit && (
+            <Button variant="ghost" size="sm" onClick={() => setEditing(true)} aria-label="Edit demographics">
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+              Edit
+            </Button>
+          )
         ) : (
           <div className="flex gap-1">
             <Button

@@ -8,10 +8,13 @@ export function ReceptionistPatientsView({
   patients,
   initialQuery,
   providers,
+  canRegister = false,
 }: {
   patients: Patient[];
   initialQuery?: string;
   providers: Map<string, AssignedProvider>;
+  /** Whether to offer "Register Patient" — `patients.register`, resolved by the page. */
+  canRegister?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -22,13 +25,17 @@ export function ReceptionistPatientsView({
             {patients.length} {patients.length === 1 ? "patient" : "patients"} in the practice.
           </p>
         </div>
-        <Link
-          href="/receptionist/patients/new"
-          className="cta-gradient-slide inline-flex h-10 items-center gap-2 rounded-[var(--radius-lg)] px-4 text-sm font-medium text-white shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
-        >
-          <UserPlus className="h-4 w-4" aria-hidden="true" />
-          Register Patient
-        </Link>
+        {/* The page behind this needs `patients.register`, which someone
+            who may only read the list does not have. */}
+        {canRegister && (
+          <Link
+            href="/receptionist/patients/new"
+            className="cta-gradient-slide inline-flex h-10 items-center gap-2 rounded-[var(--radius-lg)] px-4 text-sm font-medium text-white shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+          >
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
+            Register Patient
+          </Link>
+        )}
       </div>
 
       <PatientsTable

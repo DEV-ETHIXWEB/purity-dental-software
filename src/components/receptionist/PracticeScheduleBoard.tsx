@@ -11,6 +11,7 @@ import type { AppointmentWithPatientAndProvider } from "@/lib/data/appointments"
 import type { AppointmentStatus, User } from "@/generated/prisma/client";
 import { clinicDayKey, clinicHour, formatClinicDayLong } from "@/lib/datetime";
 import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
+import { useCan } from "@/components/auth/Permissions";
 import { NewAppointmentModal } from "@/components/dentist/NewAppointmentModal";
 import { moveAppointment } from "@/lib/actions/move-appointment";
 import { isSchedulePayload, readDragPayload, writeDragPayload } from "@/components/dentist/schedule-dnd";
@@ -103,7 +104,15 @@ export function PracticeScheduleBoard({
 }: PracticeScheduleBoardProps) {
   const timeZone = useClinicTimeZone();
   const router = useRouter();
-  const [bookingOpen, setBookingOpen] = useState(openBookingOnMount);
+  const can = useCan();
+  /*
+   * Same rule as the clinician board: booking and dragging a visit to a
+   * different hour are `schedule.manage`. The practice-wide day, the
+   * provider filter and every visit on it stay readable without it.
+   */
+  const mayManageSchedule = can("schedule.manage");
+  // `?book=1` must not open the booking modal for someone who may not book.
+  const [bookingOpen, setBookingOpen] = useState(openBookingOnMount && mayManageSchedule);
   const [dragHour, setDragHour] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; tone: "success" | "error" } | null>(null);
@@ -169,9 +178,11 @@ export function PracticeScheduleBoard({
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-base font-semibold text-text-primary">{dayLabel}</h2>
-            <Button size="sm" onClick={() => setBookingOpen(true)}>
-              New appointment
-            </Button>
+            {mayManageSchedule && (
+              <Button size="sm" onClick={() => setBookingOpen(true)}>
+                New appointment
+              </Button>
+            )}
           </div>
           <div role="tablist" aria-label="Filter schedule by provider" className="flex flex-wrap gap-2">
             <button
@@ -234,7 +245,7 @@ export function PracticeScheduleBoard({
                 onDrop={(e) => {
                   e.preventDefault();
                   setDragHour(null);
-                  if (busy) return;
+                  if (busy || !mayManageSchedule) return;
                   const payload = readDragPayload(e.dataTransfer);
                   if (payload?.kind === "appointment") void move(payload.id, hour);
                 }}
@@ -263,14 +274,14 @@ export function PracticeScheduleBoard({
                       return (
                         <div
                           key={appt.id}
-                          draggable={!busy}
+                          draggable={!busy && mayManageSchedule}
                           onDragStart={(e) =>
                             writeDragPayload(e.dataTransfer, { kind: "appointment", id: appt.id })
                           }
                           onDragEnd={() => setDragHour(null)}
                           className={cn(
                             "flex min-w-0 flex-col gap-2 rounded-[var(--radius-md)] border border-l-[3px] border-border bg-surface-muted px-3 py-2 sm:flex-row sm:items-center sm:justify-between",
-                            !busy && "cursor-grab active:cursor-grabbing",
+                            !busy && mayManageSchedule && "cursor-grab active:cursor-grabbing",
                             STATUS_ACCENT[appt.status],
                           )}
                         >

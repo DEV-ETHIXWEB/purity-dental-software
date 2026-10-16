@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { setStaffPermission } from "@/lib/actions/manage-staff";
+import { useCan } from "@/components/auth/Permissions";
 import {
   PERMISSIONS,
   PERMISSION_GROUPS,
@@ -51,6 +52,16 @@ export function PermissionsPanel({
   const [overrides, setOverrides] = useState(() => parseOverrides(permissionOverrides));
   const [busy, setBusy] = useState<PermissionKey | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const can = useCan();
+
+  /*
+   * The staff profile page around this is gated on `staff.manage`, but
+   * changing what someone may do is `permissions.manage` — a separate
+   * grant, and `setStaffPermission` checks for that one. An admin who may
+   * edit staff details but not their permissions would otherwise get a
+   * panel of switches that each refuse.
+   */
+  if (!can("permissions.manage")) return null;
 
   function choiceFor(key: PermissionKey): Choice {
     const override = overrides[key];

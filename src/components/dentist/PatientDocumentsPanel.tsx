@@ -12,6 +12,7 @@ import type { DocumentSummary } from "@/lib/data/clinical-records";
 import type { DocumentKind } from "@/generated/prisma/client";
 import { formatClinicDate } from "@/lib/datetime";
 import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
+import { useCan } from "@/components/auth/Permissions";
 
 export interface PatientDocumentsPanelProps {
   patientId: string;
@@ -51,7 +52,16 @@ const SELECT_CLASSES =
  * `/api/documents/[id]`, which re-checks who's asking — so a document link is
  * not a public URL.
  */
-export function PatientDocumentsPanel({ patientId, documents, canManage = true }: PatientDocumentsPanelProps) {
+export function PatientDocumentsPanel({ patientId, documents, canManage }: PatientDocumentsPanelProps) {
+  /*
+   * `canManage` was optional with a `true` default and no caller ever
+   * passed it, so these panels always offered their write controls. It now
+   * falls back to the permission behind the actions they call rather than
+   * to "yes"; an explicit prop still wins, which is what a caller that
+   * wants a read-only copy of the panel needs.
+   */
+  const can = useCan();
+  const mayManage = canManage ?? can("clinical.manage");
   const timeZone = useClinicTimeZone();
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -101,7 +111,7 @@ export function PatientDocumentsPanel({ patientId, documents, canManage = true }
         <span className="text-xs text-text-secondary">{documents.length} on file</span>
       </div>
 
-      {canManage && (
+      {mayManage && (
         <form
           ref={formRef}
           onSubmit={handleSubmit}
@@ -222,7 +232,7 @@ export function PatientDocumentsPanel({ patientId, documents, canManage = true }
                 <Badge tone={KIND_TONE[doc.kind]} className="shrink-0">
                   {KINDS.find((k) => k.value === doc.kind)?.label ?? "Other"}
                 </Badge>
-                {canManage && (
+                {mayManage && (
                   <button
                     type="button"
                     onClick={() => handleDelete(doc.id)}

@@ -13,6 +13,7 @@ import { PERMISSION_KEYS } from "@/lib/auth/permissions";
  */
 
 const APP_DIR = join(process.cwd(), "src", "app");
+const SRC_DIR = join(process.cwd(), "src");
 
 function routeFiles(): { path: string; source: string }[] {
   const out: { path: string; source: string }[] = [];
@@ -80,5 +81,51 @@ describe("page permission gates", () => {
     expect(pdf).toBeDefined();
     expect(pdf!.source).toContain('requirePermission("billing.view")');
     expect(pdf!.source).not.toContain("requireRole(");
+  });
+});
+
+describe("the UI reflects every gated action", () => {
+  /*
+   * A Server Action gated on a permission whose key appears nowhere in the
+   * UI means a control that is still rendered for everyone and refuses on
+   * click — the exact defect this pass set out to remove. This does not
+   * prove the right control is hidden, only that nothing was gated on the
+   * server and then forgotten on the way out.
+   */
+  function sourcesUnder(dir: string, match: RegExp): string[] {
+    const out: string[] = [];
+    const walk = (d: string) => {
+      for (const entry of readdirSync(d, { withFileTypes: true })) {
+        const full = join(d, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (match.test(entry.name)) out.push(readFileSync(full, "utf8"));
+      }
+    };
+    walk(dir);
+    return out;
+  }
+
+  it("has a UI check for each permission an action requires", () => {
+    const actionSources = sourcesUnder(join(SRC_DIR, "lib", "actions"), /\.ts$/);
+    const required = new Set<string>();
+    for (const source of actionSources) {
+      for (const m of source.matchAll(/requirePermission\(\s*"([^"]+)"/g)) {
+        required.add(m[1]);
+      }
+    }
+
+    const uiSources = [
+      ...sourcesUnder(join(SRC_DIR, "app"), /\.tsx?$/),
+      ...sourcesUnder(join(SRC_DIR, "components"), /\.tsx?$/),
+    ].join("\n");
+
+    expect(required.size).toBeGreaterThan(5);
+    for (const key of required) {
+      const reflected =
+        uiSources.includes(`can("${key}")`) ||
+        uiSources.includes(`requirePagePermission("${key}"`) ||
+        uiSources.includes(`hasPermission(session.user, "${key}")`);
+      expect(reflected, `nothing in the UI checks "${key}"`).toBe(true);
+    }
   });
 });

@@ -6,6 +6,7 @@ import { FrontDeskStatsRow } from "@/components/receptionist/FrontDeskStatsRow";
 import { TodaysVisitsList } from "@/components/receptionist/TodaysVisitsList";
 import { FollowUpsCard } from "@/components/dentist/FollowUpsCard";
 import { requirePageRole } from "@/lib/auth/require-portal";
+import { hasPermission } from "@/lib/auth/permissions";
 import { todaysPracticeAppointments } from "@/lib/data/appointments";
 import { listFollowUps, recentlyRemindedPatientIds } from "@/lib/data/patients";
 import { clinicTimeZone } from "@/lib/data/organization";
@@ -34,6 +35,8 @@ export default async function ReceptionistDashboardPage() {
     )),
   ];
 
+  const canBook = hasPermission(session.user, "schedule.manage");
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -43,13 +46,22 @@ export default async function ReceptionistDashboardPage() {
             {today.length} visit{today.length === 1 ? "" : "s"} across the practice today.
           </p>
         </div>
-        <Link
-          href="/receptionist/schedule?book=1"
-          className="inline-flex h-10 items-center gap-2 self-start rounded-[var(--radius-lg)] border border-border bg-transparent px-4 text-sm font-medium text-text-primary transition-colors hover:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
-        >
-          <CalendarPlus className="h-4 w-4" aria-hidden="true" />
-          Book Appointment
-        </Link>
+        {/*
+          * `?book=1` opens the booking modal on the schedule board, and the
+          * board suppresses it without `schedule.manage` — so for a front
+          * desk that may not book, this CTA would land on a page that does
+          * nothing. A Server Component, so it reads the permission directly
+          * rather than through `useCan`.
+          */}
+        {canBook && (
+          <Link
+            href="/receptionist/schedule?book=1"
+            className="inline-flex h-10 items-center gap-2 self-start rounded-[var(--radius-lg)] border border-border bg-transparent px-4 text-sm font-medium text-text-primary transition-colors hover:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+          >
+            <CalendarPlus className="h-4 w-4" aria-hidden="true" />
+            Book Appointment
+          </Link>
+        )}
       </div>
 
       <FrontDeskStatsRow todaysAppointments={today} />

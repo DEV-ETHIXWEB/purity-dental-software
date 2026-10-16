@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { useCan } from "@/components/auth/Permissions";
 import { createManualInvoiceAction } from "@/lib/actions/create-manual-invoice";
 import { patientFullName } from "@/lib/patient-format";
 import { formatCentsAsCurrency } from "@/lib/billing-format";
@@ -60,9 +61,16 @@ export function NewInvoiceModal({ patients }: { patients: Patient[] }) {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const can = useCan();
+
+  // This component is its own trigger, so hiding it removes the "New
+  // invoice" button along with the modal behind it.
+  const mayCreate = can("billing.manage");
 
   const lineItems = toLineItems(rows);
   const subtotalCents = lineItems.reduce((sum, li) => sum + li.quantity * li.unitPriceCents, 0);
+
+  if (!mayCreate) return null;
 
   function reset() {
     setPatientId("");

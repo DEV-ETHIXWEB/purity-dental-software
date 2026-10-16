@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Send, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useCan } from "@/components/auth/Permissions";
 import { sendPatientMessage } from "@/lib/actions/send-message";
 import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
 import type { InvoiceWithDetails } from "@/lib/data/billing";
@@ -17,6 +18,11 @@ type SendState = "idle" | "sending" | "sent" | "error";
  */
 export function SendInvoiceReminderButton({ invoice }: { invoice: InvoiceWithDetails }) {
   const [status, setStatus] = useState<SendState>("idle");
+  const can = useCan();
+
+  // The reminder is a real message on the patient's thread, so it needs the
+  // same grant as replying to one.
+  if (!can("messaging.reply")) return null;
 
   async function handleClick() {
     setStatus("sending");

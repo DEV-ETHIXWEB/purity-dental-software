@@ -11,6 +11,7 @@ import { issueConsentForm } from "@/lib/actions/clinical-records";
 import type { ConsentForm } from "@/generated/prisma/client";
 import { formatClinicDate } from "@/lib/datetime";
 import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
+import { useCan } from "@/components/auth/Permissions";
 
 export interface PatientConsentFormsPanelProps {
   patientId: string;
@@ -28,7 +29,16 @@ const TEXTAREA_CLASSES =
  * from their own portal — this panel never signs on their behalf, it only
  * shows whether they have.
  */
-export function PatientConsentFormsPanel({ patientId, forms, canManage = true }: PatientConsentFormsPanelProps) {
+export function PatientConsentFormsPanel({ patientId, forms, canManage }: PatientConsentFormsPanelProps) {
+  /*
+   * `canManage` was optional with a `true` default and no caller ever
+   * passed it, so these panels always offered their write controls. It now
+   * falls back to the permission behind the actions they call rather than
+   * to "yes"; an explicit prop still wins, which is what a caller that
+   * wants a read-only copy of the panel needs.
+   */
+  const can = useCan();
+  const mayManage = canManage ?? can("clinical.manage");
   const timeZone = useClinicTimeZone();
   const router = useRouter();
   const [adding, setAdding] = useState(false);
@@ -65,7 +75,7 @@ export function PatientConsentFormsPanel({ patientId, forms, canManage = true }:
             <span className="ml-2 text-sm font-normal text-warning-text">{pending} awaiting signature</span>
           )}
         </h3>
-        {canManage && (
+        {mayManage && (
           <Button
             variant="outline"
             size="sm"
@@ -82,7 +92,7 @@ export function PatientConsentFormsPanel({ patientId, forms, canManage = true }:
         )}
       </div>
 
-      {adding && canManage && (
+      {adding && mayManage && (
         <form
           onSubmit={handleIssue}
           className="animate-scale-in flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border bg-surface-muted/50 p-4"

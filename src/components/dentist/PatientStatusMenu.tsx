@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useCan } from "@/components/auth/Permissions";
 import { setPatientStatus } from "@/lib/actions/set-patient-status";
 import { PATIENT_STATUS_LABEL } from "@/components/dentist/PatientStatusBadge";
 import type { PatientStatus } from "@/generated/prisma/client";
@@ -45,6 +46,7 @@ export function PatientStatusMenu({ patientId, patientName, status }: PatientSta
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
+  const can = useCan();
 
   useEffect(() => {
     if (!open) return;
@@ -66,6 +68,16 @@ export function PatientStatusMenu({ patientId, patientName, status }: PatientSta
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
+
+  /*
+   * Setting a patient Active / Completed / Archived is `patients.manage`.
+   * The badge beside this menu still shows the current status — it is the
+   * means of changing it that goes away, not the fact.
+   *
+   * After the hooks above, never before: an early return that skips a hook
+   * breaks the render.
+   */
+  if (!can("patients.manage")) return null;
 
   async function choose(next: PatientStatus) {
     if (busy) return;

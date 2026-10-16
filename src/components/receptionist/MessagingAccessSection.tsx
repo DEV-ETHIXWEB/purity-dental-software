@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setMessagingAccess } from "@/lib/actions/set-messaging-access";
 import { cn } from "@/lib/cn";
+import { useCan } from "@/components/auth/Permissions";
 
 export interface MessagingAccessSectionProps {
   patientId: string;
@@ -29,6 +30,7 @@ export function MessagingAccessSection({
   const router = useRouter();
   const [allowed, setAllowed] = useState(initialAllowed);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const can = useCan();
 
   async function toggle(next: boolean) {
     // Applied first so the switch answers the tap immediately; rolled back
@@ -47,6 +49,13 @@ export function MessagingAccessSection({
       setStatus("error");
     }
   }
+
+  /*
+   * The section is nothing but this toggle, so without `messaging.grant`
+   * there is no read-only remainder worth showing — who may message the
+   * care team is a setting, not part of the clinical record.
+   */
+  if (!can("messaging.grant")) return null;
 
   const switchId = `messaging-access-${patientId}`;
 

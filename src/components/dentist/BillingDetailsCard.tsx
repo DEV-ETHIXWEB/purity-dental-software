@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Wallet, CalendarClock, Pencil, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useCan } from "@/components/auth/Permissions";
 import { Input } from "@/components/ui/Input";
 import { InsuranceIcon } from "@/components/ui/icons/purity-raster-icons";
 import { formatCentsAsCurrency } from "@/lib/billing-format";
@@ -20,6 +21,13 @@ export interface BillingDetailsCardProps {
 
 /** One section of the patient identity panel — see `ContactDetailsCard`'s header comment. */
 export function BillingDetailsCard({ patient, canEdit = false }: BillingDetailsCardProps) {
+  const can = useCan();
+  /*
+   * The caller asking for an editable card is necessary but not
+   * sufficient — editing a patient is `patients.manage`. Kept as an AND so
+   * a page that deliberately renders this read-only still does.
+   */
+  const mayEdit = canEdit && can("patients.manage");
   const timeZone = useClinicTimeZone();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -45,7 +53,7 @@ export function BillingDetailsCard({ patient, canEdit = false }: BillingDetailsC
     <section className="p-4">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <h3 className="text-[15px] font-semibold tracking-tight text-text-primary">Billing Details</h3>
-        {canEdit &&
+        {mayEdit &&
           (!editing ? (
             <Button
               variant="ghost"

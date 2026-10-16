@@ -6,6 +6,7 @@ import { AlertTriangle, ChevronDown } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
+import { useCan } from "@/components/auth/Permissions";
 import { resolveAppointment } from "@/lib/actions/resolve-appointment";
 import { formatClinicDate, formatClinicTime } from "@/lib/datetime";
 import { patientFullName } from "@/lib/patient-format";
@@ -30,6 +31,7 @@ export interface NeedsAttentionPanelProps {
 export function NeedsAttentionPanel({ appointments }: NeedsAttentionPanelProps) {
   const router = useRouter();
   const timeZone = useClinicTimeZone();
+  const can = useCan();
   const [busyId, setBusyId] = useState<string | null>(null);
   // Starts closed. It sits above the board and grows with the backlog — at
   // thirteen unresolved visits it pushed the schedule itself off the first
@@ -122,19 +124,25 @@ export function NeedsAttentionPanel({ appointments }: NeedsAttentionPanelProps) 
               </div>
             </div>
 
-            <div className="flex shrink-0 gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busyId === appt.id}
-                onClick={() => resolve(appt, "NO_SHOW")}
-              >
-                No show
-              </Button>
-              <Button size="sm" disabled={busyId === appt.id} onClick={() => resolve(appt, "COMPLETED")}>
-                {busyId === appt.id ? "Saving…" : "Completed"}
-              </Button>
-            </div>
+            {/* Settling a past booking as completed or a no-show is a
+                schedule change, so it needs `schedule.manage`. Without it the
+                panel still names what needs attention — it just isn't the
+                place it gets resolved. */}
+            {can("schedule.manage") && (
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busyId === appt.id}
+                  onClick={() => resolve(appt, "NO_SHOW")}
+                >
+                  No show
+                </Button>
+                <Button size="sm" disabled={busyId === appt.id} onClick={() => resolve(appt, "COMPLETED")}>
+                  {busyId === appt.id ? "Saving…" : "Completed"}
+                </Button>
+              </div>
+            )}
           </li>
         ))}
       </ul>

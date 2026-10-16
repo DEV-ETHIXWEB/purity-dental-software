@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { useCan } from "@/components/auth/Permissions";
 import { patientFullName } from "@/lib/patient-format";
 import { sendRecallReminder } from "@/lib/actions/send-recall-reminder";
 import { RECALL_REMINDER_COOLDOWN_DAYS } from "@/lib/recall-reminder";
@@ -43,6 +44,8 @@ export function FollowUpsCard({ patients, remindedPatientIds = [] }: FollowUpsCa
   const [status, setStatus] = useState<Record<string, SendState>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const alreadyReminded = new Set(remindedPatientIds);
+  const can = useCan();
+  const mayRemind = can("messaging.reply");
 
   function stateFor(patientId: string): SendState {
     return status[patientId] ?? (alreadyReminded.has(patientId) ? "sent" : "idle");
@@ -116,46 +119,53 @@ export function FollowUpsCard({ patients, remindedPatientIds = [] }: FollowUpsCa
                 </div>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
-                <Button
-                  size="sm"
-                  variant={state === "confirming" ? "primary" : state === "sent" ? "secondary" : "outline"}
-                  className="transition-all duration-200 ease-out hover:shadow-card active:scale-[0.97] motion-reduce:active:scale-100"
-                  onClick={() => handleRemind(patient)}
-                  disabled={state === "sending" || state === "sent"}
-                  aria-label={
-                    state === "confirming"
-                      ? `Confirm sending a reminder to ${name}`
-                      : `Send reminder to ${name}`
-                  }
-                >
-                  {state === "sending" && (
-                    <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                  )}
-                  {state === "sending"
-                    ? "Sending…"
-                    : state === "sent"
-                      ? <span className="animate-pop-in">Reminded</span>
-                      : state === "confirming"
-                        ? "Send it?"
-                        : state === "error"
-                          ? "Try again"
-                          : "Remind"}
-                </Button>
-                {state === "confirming" && (
-                  <span className="text-[11px] text-text-secondary">
-                    Messages {patient.firstName} directly
-                  </span>
-                )}
-                {errors[patient.id] && (
-                  <span
-                    role="status"
-                    className={cn(
-                      "max-w-[14rem] text-right text-[11px]",
-                      state === "error" ? "text-error-text" : "text-text-secondary",
-                    )}
+                {/* `sendRecallReminder` needs `messaging.reply`. Who is
+                    overdue is still worth seeing without it; the way to
+                    chase them is what goes away. */}
+                {mayRemind && (
+                  <>
+                  <Button
+                    size="sm"
+                    variant={state === "confirming" ? "primary" : state === "sent" ? "secondary" : "outline"}
+                    className="transition-all duration-200 ease-out hover:shadow-card active:scale-[0.97] motion-reduce:active:scale-100"
+                    onClick={() => handleRemind(patient)}
+                    disabled={state === "sending" || state === "sent"}
+                    aria-label={
+                      state === "confirming"
+                        ? `Confirm sending a reminder to ${name}`
+                        : `Send reminder to ${name}`
+                    }
                   >
-                    {errors[patient.id]}
-                  </span>
+                    {state === "sending" && (
+                      <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                    )}
+                    {state === "sending"
+                      ? "Sending…"
+                      : state === "sent"
+                        ? <span className="animate-pop-in">Reminded</span>
+                        : state === "confirming"
+                          ? "Send it?"
+                          : state === "error"
+                            ? "Try again"
+                            : "Remind"}
+                  </Button>
+                  {state === "confirming" && (
+                    <span className="text-[11px] text-text-secondary">
+                      Messages {patient.firstName} directly
+                    </span>
+                  )}
+                  {errors[patient.id] && (
+                    <span
+                      role="status"
+                      className={cn(
+                        "max-w-[14rem] text-right text-[11px]",
+                        state === "error" ? "text-error-text" : "text-text-secondary",
+                      )}
+                    >
+                      {errors[patient.id]}
+                    </span>
+                  )}
+                  </>
                 )}
               </div>
             </div>

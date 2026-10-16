@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { requirePageRole } from "@/lib/auth/require-portal";
+import { hasPermission } from "@/lib/auth/permissions";
 import { staffCountsByRole, ROLE_LABELS, STAFF_ROLES } from "@/lib/data/staff";
 import { listAuditEntries } from "@/lib/data/audit";
 import { getPracticeDetails } from "@/lib/data/organization";
@@ -125,12 +126,16 @@ export default async function AdminDashboardPage() {
         <Card className="flex flex-col lg:col-span-2">
           <CardHeader>
             <CardTitle>Recent activity</CardTitle>
-            <Link
-              href="/admin/audit"
-              className="touch-link text-sm text-[var(--color-brand-blue-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
-            >
-              View all
-            </Link>
+            {/* The audit page is gated on `audit.view`, which an admin can
+                have revoked — the card's own recent rows stay either way. */}
+            {hasPermission(session.user, "audit.view") && (
+              <Link
+                href="/admin/audit"
+                className="touch-link text-sm text-[var(--color-brand-blue-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+              >
+                View all
+              </Link>
+            )}
           </CardHeader>
           <CardContent className="flex flex-1 flex-col">
             {recent.length === 0 ? (

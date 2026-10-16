@@ -12,6 +12,7 @@ import type { PrescriptionWithPrescriber } from "@/lib/data/clinical-records";
 import type { PrescriptionStatus } from "@/generated/prisma/client";
 import { formatClinicDate } from "@/lib/datetime";
 import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
+import { useCan } from "@/components/auth/Permissions";
 
 export interface PatientPrescriptionsPanelProps {
   patientId: string;
@@ -40,8 +41,17 @@ const FIELD_CLASSES =
 export function PatientPrescriptionsPanel({
   patientId,
   prescriptions,
-  canManage = true,
+  canManage,
 }: PatientPrescriptionsPanelProps) {
+  /*
+   * `canManage` was optional with a `true` default and no caller ever
+   * passed it, so these panels always offered their write controls. It now
+   * falls back to the permission behind the actions they call rather than
+   * to "yes"; an explicit prop still wins, which is what a caller that
+   * wants a read-only copy of the panel needs.
+   */
+  const can = useCan();
+  const mayManage = canManage ?? can("clinical.manage");
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const timeZone = useClinicTimeZone();
@@ -94,7 +104,7 @@ export function PatientPrescriptionsPanel({
           Prescriptions
           <span className="ml-2 text-sm font-normal text-text-secondary">Meds and products</span>
         </h3>
-        {canManage && (
+        {mayManage && (
           <Button
             variant="outline"
             size="sm"
@@ -111,7 +121,7 @@ export function PatientPrescriptionsPanel({
         )}
       </div>
 
-      {adding && canManage && (
+      {adding && mayManage && (
         <form
           onSubmit={handleAdd}
           className="animate-scale-in flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border bg-surface-muted/50 p-4"
@@ -202,7 +212,7 @@ export function PatientPrescriptionsPanel({
               <Badge tone={STATUS_TONE[rx.status]} className="shrink-0">
                 {STATUS_LABEL[rx.status]}
               </Badge>
-              {canManage && rx.status === "ACTIVE" && (
+              {mayManage && rx.status === "ACTIVE" && (
                 <div className="flex shrink-0 gap-1">
                   <button
                     type="button"

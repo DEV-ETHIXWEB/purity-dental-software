@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useCan } from "@/components/auth/Permissions";
 import { markInvoicePaid } from "@/lib/actions/mark-invoice-paid";
 
 /**
@@ -17,6 +18,15 @@ export function MarkInvoicePaidButton({ invoiceId }: { invoiceId: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(false);
+  const can = useCan();
+
+  /*
+   * Recording a payment is `billing.recordPayment`. Without it the action
+   * refuses the click, so the button should not be here to click — a
+   * hygienist whose practice keeps payments at the front desk sees the
+   * invoice and its status, just not a way to settle it.
+   */
+  if (!can("billing.recordPayment")) return null;
 
   async function handleClick() {
     setPending(true);

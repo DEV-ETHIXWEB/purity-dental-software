@@ -4,6 +4,7 @@ import { useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { useCan } from "@/components/auth/Permissions";
 import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
 import { bookAppointment } from "@/lib/actions/book-appointment";
 import {
@@ -65,6 +66,7 @@ export function NewAppointmentModal({
   defaultDate,
   defaultTime = "09:00",
 }: NewAppointmentModalProps) {
+  const can = useCan();
   const router = useRouter();
   const timeZone = useClinicTimeZone();
   const ids = useId();
@@ -137,6 +139,14 @@ export function NewAppointmentModal({
   }
 
   const soleProvider = providers.length === 1 ? providers[0] : null;
+
+  /*
+   * Belt and braces behind both schedule boards, which already hide their
+   * triggers: the modal writes through `bookAppointment`, which requires
+   * `schedule.manage`, so a stray `open` must not render a form whose
+   * submit can only be refused.
+   */
+  if (!can("schedule.manage")) return null;
 
   return (
     <Modal

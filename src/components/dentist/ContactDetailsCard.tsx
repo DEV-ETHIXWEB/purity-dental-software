@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useCan } from "@/components/auth/Permissions";
 import { Input } from "@/components/ui/Input";
 import { PhoneIcon, EmailIcon } from "@/components/ui/icons/purity-raster-icons";
 import { updatePatientContact } from "@/lib/actions/update-patient";
@@ -22,6 +23,13 @@ export interface ContactDetailsCardProps {
  * record should read as one coherent workspace, not a stack of boxes.
  */
 export function ContactDetailsCard({ patient, canEdit = false }: ContactDetailsCardProps) {
+  const can = useCan();
+  /*
+   * The caller asking for an editable card is necessary but not
+   * sufficient — editing a patient is `patients.manage`. Kept as an AND so
+   * a page that deliberately renders this read-only still does.
+   */
+  const mayEdit = canEdit && can("patients.manage");
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -46,7 +54,7 @@ export function ContactDetailsCard({ patient, canEdit = false }: ContactDetailsC
     <section className="p-4">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <h3 className="text-[15px] font-semibold tracking-tight text-text-primary">Contact Details</h3>
-        {canEdit &&
+        {mayEdit &&
           (!editing ? (
             <Button
               variant="ghost"

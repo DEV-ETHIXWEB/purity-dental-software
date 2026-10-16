@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ReceptionistPatientsView } from "@/components/receptionist/ReceptionistPatientsView";
 import { requirePagePermission } from "@/lib/auth/require-portal";
+import { hasPermission } from "@/lib/auth/permissions";
 import { assignedProviders, listPatients } from "@/lib/data/patients";
 
 export const metadata: Metadata = {
@@ -26,6 +27,7 @@ export default async function ReceptionistPatientsPage({
       patients={patients}
       initialQuery={typeof q === "string" ? q : undefined}
       providers={providers}
+      canRegister={hasPermission(session.user, "patients.register")}
     />
   );
 }

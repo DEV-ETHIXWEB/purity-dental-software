@@ -24,6 +24,7 @@ import type { InvoiceStatus } from "@/generated/prisma/client";
 import { cn } from "@/lib/cn";
 import { formatClinicDate } from "@/lib/datetime";
 import { useClinicTimeZone } from "@/components/shell/ClinicTimeZone";
+import { useCan } from "@/components/auth/Permissions";
 
 const PAGE_SIZE = 5;
 const FILTERS: { label: string; value: InvoiceStatus | "ALL" }[] = [
@@ -42,6 +43,14 @@ export interface InvoicesTableProps {
 export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
   const timeZone = useClinicTimeZone();
   const router = useRouter();
+  const can = useCan();
+  /*
+   * The two row actions are separate grants, so they appear separately: a
+   * front desk that may take a payment but not message patients gets the
+   * tick and no envelope. Both hidden leaves the row as a plain record.
+   */
+  const canRecordPayment = can("billing.recordPayment");
+  const canRemind = can("messaging.reply");
   const [filter, setFilter] = useState<InvoiceStatus | "ALL">("ALL");
   const [page, setPage] = useState(1);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -150,7 +159,7 @@ export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
-                      {!isPaid && (
+                      {!isPaid && canRecordPayment && (
                         <Button
                           size="icon"
                           variant="ghost"
@@ -161,7 +170,7 @@ export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
                           <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       )}
-                      {!isPaid && (
+                      {!isPaid && canRemind && (
                         <Button
                           size="icon"
                           variant="ghost"
@@ -217,30 +226,34 @@ export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
 
               <div className="mt-2 flex items-center justify-between gap-2">
                 <InvoiceStatusBadge status={invoice.status} />
-                {!isPaid && (
+                {!isPaid && (canRecordPayment || canRemind) && (
                   <div className="flex items-center gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label={`Mark ${invoiceNumber(invoice)} as paid`}
-                      disabled={pendingId === invoice.id}
-                      onClick={() => handleMarkPaid(invoice.id)}
-                    >
-                      <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label={
-                        remindedIds[invoice.id]
-                          ? `Reminder sent for ${invoiceNumber(invoice)}`
-                          : `Send reminder for ${invoiceNumber(invoice)}`
-                      }
-                      disabled={remindingId === invoice.id || remindedIds[invoice.id]}
-                      onClick={() => handleSendReminder(invoice)}
-                    >
-                      <Send className="h-4 w-4" aria-hidden="true" />
-                    </Button>
+                    {canRecordPayment && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Mark ${invoiceNumber(invoice)} as paid`}
+                        disabled={pendingId === invoice.id}
+                        onClick={() => handleMarkPaid(invoice.id)}
+                      >
+                        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    )}
+                    {canRemind && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label={
+                          remindedIds[invoice.id]
+                            ? `Reminder sent for ${invoiceNumber(invoice)}`
+                            : `Send reminder for ${invoiceNumber(invoice)}`
+                        }
+                        disabled={remindingId === invoice.id || remindedIds[invoice.id]}
+                        onClick={() => handleSendReminder(invoice)}
+                      >
+                        <Send className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

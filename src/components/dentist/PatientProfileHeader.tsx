@@ -6,6 +6,7 @@ import { ClipboardPlus } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { useCan } from "@/components/auth/Permissions";
 import { RecallStatusBadge } from "@/components/dentist/PatientStatusBadge";
 import { LogTreatmentModal } from "@/components/dentist/LogTreatmentModal";
 import { patientFullName, patientAge } from "@/lib/patient-format";
@@ -33,6 +34,12 @@ export function PatientProfileHeader({
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const can = useCan();
+  /*
+   * Logging treatment raises the invoice for it, which is why it has a key
+   * of its own rather than riding on `clinical.manage`.
+   */
+  const mayLogTreatment = canLogTreatment && can("treatment.log");
   const name = patientFullName(patient);
 
   return (
@@ -58,7 +65,7 @@ export function PatientProfileHeader({
         </div>
       </div>
 
-      {canLogTreatment && (
+      {mayLogTreatment && (
         <div className={cn("flex flex-col gap-1.5", variant === "standalone" ? "items-end" : "items-start")}>
           <Button onClick={() => setModalOpen(true)}>
             <ClipboardPlus className="h-4 w-4" aria-hidden="true" />
@@ -72,7 +79,7 @@ export function PatientProfileHeader({
         </div>
       )}
 
-      {canLogTreatment && (
+      {mayLogTreatment && (
         <LogTreatmentModal
           open={modalOpen}
           onClose={() => setModalOpen(false)}
