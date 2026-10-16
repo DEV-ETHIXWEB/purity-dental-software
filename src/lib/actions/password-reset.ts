@@ -47,8 +47,18 @@ export async function requestPasswordReset(
   // Always return the same generic "if an account exists" message
   // regardless of whether the email matches a user — this is the same
   // user-enumeration protection as the login form's generic error.
+  /*
+   * Deliberately does not claim an email was sent.
+   *
+   * There is no transactional email provider wired up (see the file header),
+   * so the link is generated and then goes nowhere. Telling someone to check
+   * an inbox that will never receive anything leaves them stuck with no next
+   * step. This keeps the account-enumeration-safe wording — it still reveals
+   * nothing about whether the address exists — while pointing at the route
+   * that does work today: staff can reset a password from Admin > Staff.
+   */
   const GENERIC_MESSAGE =
-    "If an account exists for that email, a password reset link has been sent.";
+    "If an account exists for that email, a reset link has been created. Email delivery isn't set up yet — contact the practice and a member of staff can reset your password for you.";
 
   try {
     const user = await prisma.user.findUnique({

@@ -23,6 +23,15 @@ export interface ProfileSettingsCardProps {
   presence?: UserPresence | null;
   /** Extra read-only field shown after Role (e.g. the Patient portal's date of birth). */
   extraReadOnlyField?: { label: string; value: string };
+  /**
+   * Who to approach about a login-email change.
+   *
+   * The old copy said "Contact support" — but there is no support contact
+   * anywhere in this app, so it sent people nowhere. Staff should ask an
+   * admin, who can change it from Admin > Staff; patients should ask the
+   * practice. Hence a prop rather than one hardcoded line.
+   */
+  emailHint?: string;
 }
 
 /**
@@ -32,7 +41,7 @@ export interface ProfileSettingsCardProps {
  * scope for a simple profile-details save); name and phone persist via
  * `updateMyProfile`.
  */
-export function ProfileSettingsCard({ name: initialName, email, phone: initialPhone, roleLabel, photoUrl, presence, extraReadOnlyField }: ProfileSettingsCardProps) {
+export function ProfileSettingsCard({ name: initialName, email, phone: initialPhone, roleLabel, photoUrl, presence, extraReadOnlyField, emailHint = "An admin can change your login email from Admin › Staff." }: ProfileSettingsCardProps) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
   const [phone, setPhone] = useState(initialPhone);
@@ -210,7 +219,7 @@ export function ProfileSettingsCard({ name: initialName, email, phone: initialPh
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="Full name" value={name} onChange={(e) => setName(e.target.value)} className="transition-colors duration-200 ease-out hover:border-border-strong focus:border-[var(--color-brand-blue)]" />
           <Input label="Role" defaultValue={roleLabel} disabled />
-          <Input label="Email" type="email" defaultValue={email} disabled hint="Contact support to change your login email." />
+          <Input label="Email" type="email" defaultValue={email} disabled hint={emailHint} />
           <Input label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="transition-colors duration-200 ease-out hover:border-border-strong focus:border-[var(--color-brand-blue)]" />
           {extraReadOnlyField && (
             <Input label={extraReadOnlyField.label} defaultValue={extraReadOnlyField.value} disabled />

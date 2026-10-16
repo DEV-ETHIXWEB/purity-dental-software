@@ -29,7 +29,10 @@ export function ForgotPasswordForm() {
       <CardHeader className="flex-col items-start gap-1 pt-4">
         <CardTitle className="text-xl">Reset your password</CardTitle>
         <CardDescription>
-          Enter your account email and we&apos;ll send a link to reset your password.
+          {/* No email provider is configured yet, so this must not promise
+              a message that never arrives — see `password-reset.ts`. */}
+          Enter your account email. Email delivery isn&apos;t set up yet, so contact the
+          practice if you need your password reset right away.
         </CardDescription>
       </CardHeader>
       <CardContent>

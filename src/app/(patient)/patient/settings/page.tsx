@@ -45,6 +45,7 @@ export default async function PatientSettingsPage() {
         phone={currentPatient.phone ?? ""}
         roleLabel="Patient"
         photoUrl={currentPatient.photoUrl}
+        emailHint="Contact the practice to change your login email."
         extraReadOnlyField={{ label: "Date of birth", value: dob }}
       />
 
