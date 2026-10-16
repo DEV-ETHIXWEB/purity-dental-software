@@ -81,6 +81,10 @@ describe("page permission gates", () => {
     expect(pdf).toBeDefined();
     expect(pdf!.source).toContain('requirePermission("billing.view")');
     expect(pdf!.source).not.toContain("requireRole(");
+    // A refusal is a 403, not an uncaught throw (a 500), and the old
+    // Dentist/Admin-only rule still applies on top of the permission.
+    expect(pdf!.source).toContain("AuthorizationError");
+    expect(pdf!.source).toContain('"DENTIST"');
   });
 });
 

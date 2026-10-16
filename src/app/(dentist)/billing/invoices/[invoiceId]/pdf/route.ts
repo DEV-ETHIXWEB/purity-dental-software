@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { requirePermission } from "@/lib/auth/authorize";
+import { AuthorizationError, requirePermission } from "@/lib/auth/authorize";
 import { getInvoiceById } from "@/lib/data/billing";
 import { invoiceNumber } from "@/lib/billing-format";
 import { InvoicePdfDocument } from "@/components/dentist/InvoicePdfDocument";
@@ -23,9 +23,32 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ invoiceId: string }> },
 ) {
-  // Same grant as the invoice page this downloads from: a revoked
-  // `billing.view` must not leave the PDF reachable by URL.
-  const session = await requirePermission("billing.view");
+  /*
+   * Same grant as the invoice page this downloads from: a revoked
+   * `billing.view` must not leave the PDF reachable by URL.
+   *
+   * Caught and mapped to a status rather than left to throw — an uncaught
+   * `AuthorizationError` in a Route Handler is a 500, which reads as a
+   * server fault instead of a refusal (the documents route does the same).
+   */
+  let session;
+  try {
+    session = await requirePermission("billing.view");
+  } catch (error) {
+    const status = error instanceof AuthorizationError && error.code === "FORBIDDEN" ? 403 : 401;
+    return new NextResponse(status === 403 ? "Forbidden" : "Unauthorized", { status });
+  }
+
+  /*
+   * The permission alone is not the whole old rule. This route was
+   * Dentist/Admin-only, and `billing.view` is also held by hygienists and
+   * the front desk, who have no PDF button — so checking only the
+   * permission would have quietly opened the download to them.
+   */
+  if (session.user.role !== "DENTIST" && session.user.role !== "ADMIN") {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
   const { invoiceId } = await params;
   const [invoice, practice] = await Promise.all([
     getInvoiceById(session.user.organizationId, invoiceId),
