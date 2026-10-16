@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { requirePageRole } from "@/lib/auth/require-portal";
@@ -50,13 +51,32 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-text-primary">
-          {practice?.name ?? "Practice"} overview
-        </h1>
-        <p className="text-sm text-text-secondary">
-          Who works here, how busy today is, and what changed recently.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-text-primary">
+            {practice?.name ?? "Practice"} overview
+          </h1>
+          <p className="text-sm text-text-secondary">
+            Who works here, how busy today is, and what changed recently.
+          </p>
+        </div>
+
+        {/*
+         * The way back to the clinical side.
+         *
+         * An admin holds superset access to every portal, but this nav is
+         * administration-only and `dashboardPathForRole` sends admins here
+         * at sign-in — which left no in-app route to the schedule, patients
+         * or billing at all. One explicit link beats five nav items that
+         * would jump the admin into another portal's shell unannounced.
+         */}
+        <Link
+          href="/dashboard"
+          className="touch-link shrink-0 gap-1.5 self-start rounded-[var(--radius-lg)] border border-border px-4 text-sm font-medium text-text-primary transition-colors hover:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]"
+        >
+          Open the clinical portal
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
