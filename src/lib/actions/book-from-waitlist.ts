@@ -1,6 +1,6 @@
 "use server";
 
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePermission } from "@/lib/auth/authorize";
 import { createAppointment, hasOverlappingAppointment } from "@/lib/data/appointments";
 import { getWaitlistEntryById, removeWaitlistEntry } from "@/lib/data/waitlist";
 import { getProviderById } from "@/lib/data/providers";
@@ -32,7 +32,7 @@ export async function bookFromWaitlist(params: {
   endTime: string;
 }): Promise<BookFromWaitlistResult> {
   try {
-    const session = await requireRole(["DENTIST", "HYGIENIST", "RECEPTIONIST", "ADMIN"]);
+    const session = await requirePermission("schedule.manage");
 
     const [entry, provider] = await Promise.all([
       getWaitlistEntryById(session.user.organizationId, params.waitlistEntryId),

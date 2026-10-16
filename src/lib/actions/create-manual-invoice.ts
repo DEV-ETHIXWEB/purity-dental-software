@@ -1,6 +1,6 @@
 "use server";
 
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePermission } from "@/lib/auth/authorize";
 import { createManualInvoice, type TreatmentLineItemInput } from "@/lib/data/billing";
 import { writeAuditLog } from "@/lib/auth/audit-log";
 
@@ -24,7 +24,7 @@ export async function createManualInvoiceAction(
   notes: string,
 ): Promise<CreateManualInvoiceResult> {
   try {
-    const session = await requireRole(["DENTIST", "HYGIENIST", "ADMIN"]);
+    const session = await requirePermission("billing.manage");
 
     if (!patientId) {
       return { ok: false, error: "Select a patient." };

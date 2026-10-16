@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/lib/auth/authorize";
+import { requireRole, requirePermission } from "@/lib/auth/authorize";
 import { prisma } from "@/lib/prisma";
 import { getPatientById, getPatientForUser } from "@/lib/data/patients";
 import { writeAuditLog } from "@/lib/auth/audit-log";
@@ -22,7 +22,6 @@ interface ActionResult {
   error?: string;
 }
 
-const STAFF = ["DENTIST", "HYGIENIST", "RECEPTIONIST", "ADMIN"] as const;
 
 /**
  * Bytes live in Postgres (no blob store is configured), so the cap is what
@@ -50,7 +49,7 @@ function revalidatePatient(patientId: string) {
 
 export async function uploadPatientDocument(formData: FormData): Promise<ActionResult> {
   try {
-    const session = await requireRole([...STAFF]);
+    const session = await requirePermission("clinical.manage");
     const patientId = String(formData.get("patientId") ?? "");
     const title = String(formData.get("title") ?? "").trim();
     const kindRaw = String(formData.get("kind") ?? "OTHER") as DocumentKind;
@@ -103,7 +102,7 @@ export async function uploadPatientDocument(formData: FormData): Promise<ActionR
 
 export async function deletePatientDocument(documentId: string): Promise<ActionResult> {
   try {
-    const session = await requireRole([...STAFF]);
+    const session = await requirePermission("clinical.manage");
     const existing = await prisma.document.findFirst({
       where: { id: documentId, organizationId: session.user.organizationId },
       select: { id: true, patientId: true, title: true },
@@ -135,7 +134,7 @@ export async function addPrescription(input: {
   instructions?: string;
 }): Promise<ActionResult> {
   try {
-    const session = await requireRole([...STAFF]);
+    const session = await requirePermission("clinical.manage");
     const patient = await getPatientById(session.user.organizationId, input.patientId);
     if (!patient) return { ok: false, error: "Patient not found." };
 
@@ -178,7 +177,7 @@ export async function setPrescriptionStatus(
   status: "ACTIVE" | "COMPLETED" | "CANCELLED",
 ): Promise<ActionResult> {
   try {
-    const session = await requireRole([...STAFF]);
+    const session = await requirePermission("clinical.manage");
     const existing = await prisma.prescription.findFirst({
       where: { id: prescriptionId, organizationId: session.user.organizationId },
       select: { id: true, patientId: true },
@@ -209,7 +208,7 @@ export async function issueConsentForm(input: {
   body: string;
 }): Promise<ActionResult> {
   try {
-    const session = await requireRole([...STAFF]);
+    const session = await requirePermission("clinical.manage");
     const patient = await getPatientById(session.user.organizationId, input.patientId);
     if (!patient) return { ok: false, error: "Patient not found." };
 

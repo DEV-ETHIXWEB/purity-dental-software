@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ProvidersManager } from "@/components/receptionist/ProvidersManager";
-import { requirePageRole } from "@/lib/auth/require-portal";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 import { listAllProviders } from "@/lib/data/providers";
 
 export const metadata: Metadata = {
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ReceptionistProvidersPage() {
-  const session = await requirePageRole(["RECEPTIONIST", "ADMIN"]);
+  const session = await requirePagePermission("providers.manage");
   const providers = await listAllProviders(session.user.organizationId);
 
   return (

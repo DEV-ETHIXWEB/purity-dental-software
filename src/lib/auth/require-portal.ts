@@ -2,6 +2,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { getCurrentSession, dashboardPathForRole } from "@/lib/auth/session";
 import type { UserRole } from "@/generated/prisma/client";
+import { hasPermission, type PermissionKey } from "@/lib/auth/permissions";
 
 /**
  * Layout-level portal gate: resolves the real (DB-backed) session and
@@ -57,6 +58,31 @@ export async function requirePageRole(allowedRoles: UserRole[]) {
   }
 
   if (!allowedRoles.includes(session.user.role)) {
+    redirect(dashboardPathForRole(session.user.role));
+  }
+
+  return session;
+}
+
+/**
+ * Page-level permission gate — the `requirePermission` counterpart to
+ * `requirePageRole`.
+ *
+ * Same redirect-don't-throw rule as `requirePageRole`: someone who has had a
+ * permission revoked has made a navigation mistake, not triggered a crash,
+ * so they go to their own dashboard rather than an error boundary.
+ *
+ * Use this on any page whose actions are permission-gated, otherwise the
+ * page renders controls that every click will refuse.
+ */
+export async function requirePagePermission(permission: PermissionKey) {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  if (!hasPermission(session.user, permission)) {
     redirect(dashboardPathForRole(session.user.role));
   }
 

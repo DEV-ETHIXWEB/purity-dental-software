@@ -1,6 +1,6 @@
 "use server";
 
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePermission } from "@/lib/auth/authorize";
 import { prisma } from "@/lib/prisma";
 import { getPatientById } from "@/lib/data/patients";
 import { writeAuditLog } from "@/lib/auth/audit-log";
@@ -28,7 +28,7 @@ export async function updatePatientContact(
   data: { phone: string; email: string },
 ): Promise<ActionResult> {
   try {
-    const session = await requireRole(["DENTIST", "HYGIENIST", "RECEPTIONIST", "ADMIN"]);
+    const session = await requirePermission("patients.manage");
     const patient = await getPatientById(session.user.organizationId, patientId);
     if (!patient) return { ok: false, error: "Patient not found." };
 
@@ -54,7 +54,7 @@ export async function updatePatientBilling(
   data: { insuranceProvider: string; insurancePlan: string },
 ): Promise<ActionResult> {
   try {
-    const session = await requireRole(["DENTIST", "HYGIENIST", "RECEPTIONIST", "ADMIN"]);
+    const session = await requirePermission("patients.manage");
     const patient = await getPatientById(session.user.organizationId, patientId);
     if (!patient) return { ok: false, error: "Patient not found." };
 
@@ -81,7 +81,7 @@ export async function updatePatientDemographics(
   data: { firstName: string; lastName: string; phone: string },
 ): Promise<ActionResult> {
   try {
-    const session = await requireRole(["RECEPTIONIST", "ADMIN"]);
+    const session = await requirePermission("patients.register");
     const patient = await getPatientById(session.user.organizationId, patientId);
     if (!patient) return { ok: false, error: "Patient not found." };
 

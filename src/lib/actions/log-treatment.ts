@@ -1,6 +1,6 @@
 "use server";
 
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePermission } from "@/lib/auth/authorize";
 import { getPatientById } from "@/lib/data/patients";
 import { createInvoiceFromTreatment, type TreatmentLineItemInput } from "@/lib/data/billing";
 import { writeAuditLog } from "@/lib/auth/audit-log";
@@ -23,7 +23,7 @@ export async function logTreatmentAndSendToBilling(
   notes: string,
 ): Promise<LogTreatmentResult> {
   try {
-    const session = await requireRole(["DENTIST", "HYGIENIST", "ADMIN"]);
+    const session = await requirePermission("treatment.log");
 
     if (lineItems.length === 0) {
       return { ok: false, error: "Select at least one procedure." };

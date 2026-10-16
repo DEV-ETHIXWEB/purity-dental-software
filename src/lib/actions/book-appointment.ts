@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePermission } from "@/lib/auth/authorize";
 import { createAppointment, hasOverlappingAppointment } from "@/lib/data/appointments";
 import { getPatientById } from "@/lib/data/patients";
 import { getProviderById } from "@/lib/data/providers";
@@ -40,7 +40,7 @@ export async function bookAppointment(params: {
   notes?: string;
 }): Promise<BookAppointmentResult> {
   try {
-    const session = await requireRole(["DENTIST", "HYGIENIST", "RECEPTIONIST", "ADMIN"]);
+    const session = await requirePermission("schedule.manage");
     const organizationId = session.user.organizationId;
 
     const [patient, provider] = await Promise.all([

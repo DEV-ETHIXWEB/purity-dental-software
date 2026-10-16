@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePermission } from "@/lib/auth/authorize";
 import { getProviderById } from "@/lib/data/providers";
 import { writeAuditLog } from "@/lib/auth/audit-log";
 
@@ -44,7 +44,7 @@ export async function moveAppointment(params: {
   providerId?: string;
 }): Promise<MoveAppointmentResult> {
   try {
-    const session = await requireRole(["DENTIST", "HYGIENIST", "RECEPTIONIST", "ADMIN"]);
+    const session = await requirePermission("schedule.manage");
     const organizationId = session.user.organizationId;
 
     const appointment = await prisma.appointment.findFirst({

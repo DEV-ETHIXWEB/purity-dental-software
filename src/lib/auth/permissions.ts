@@ -38,7 +38,12 @@ export const PERMISSIONS = {
   },
   "clinical.manage": {
     label: "Manage clinical records",
-    description: "Treatment plans, perio charts, prescriptions and documents.",
+    description: "Documents, prescriptions and consent forms.",
+    group: "Patients",
+  },
+  "treatment.log": {
+    label: "Log treatment",
+    description: "Record completed treatment, which also raises its invoice.",
     group: "Patients",
   },
   "billing.view": {
@@ -48,7 +53,12 @@ export const PERMISSIONS = {
   },
   "billing.manage": {
     label: "Manage billing",
-    description: "Create and edit invoices, and record payments.",
+    description: "Create and edit invoices.",
+    group: "Billing",
+  },
+  "billing.recordPayment": {
+    label: "Record payments",
+    description: "Mark an invoice as paid.",
     group: "Billing",
   },
   "messaging.reply": {
@@ -60,6 +70,11 @@ export const PERMISSIONS = {
     label: "Grant patient messaging",
     description: "Decide which patients may message the care team.",
     group: "Messaging",
+  },
+  "providers.manage": {
+    label: "Manage clinicians",
+    description: "Add dentists and hygienists from the Team page, and switch their accounts on or off.",
+    group: "Administration",
   },
   "staff.manage": {
     label: "Manage staff",
@@ -109,15 +124,25 @@ const ROLE_DEFAULTS: Record<UserRole, readonly PermissionKey[]> = {
     "patients.view",
     "patients.manage",
     "clinical.manage",
+    "treatment.log",
     "billing.view",
     "billing.manage",
+    "billing.recordPayment",
     "messaging.reply",
   ],
   HYGIENIST: [
     "schedule.manage",
     "patients.view",
+    // Hygienists hold these because they already did before permissions
+    // existed: the actions behind them were gated on a role list that
+    // included HYGIENIST, and wiring the gates up was not meant to take
+    // anything away. Narrow them here if that was never intended.
+    "patients.manage",
     "clinical.manage",
+    "treatment.log",
     "billing.view",
+    "billing.manage",
+    "billing.recordPayment",
     "messaging.reply",
   ],
   RECEPTIONIST: [
@@ -125,9 +150,17 @@ const ROLE_DEFAULTS: Record<UserRole, readonly PermissionKey[]> = {
     "patients.view",
     "patients.manage",
     "patients.register",
+    // Same reasoning as the hygienist note above: the front desk could
+    // already upload documents, issue consent forms and record payments.
+    "clinical.manage",
     "billing.view",
+    "billing.recordPayment",
     "messaging.reply",
     "messaging.grant",
+    // The Team page was gated on requireRole([RECEPTIONIST, ADMIN]); this
+    // keeps the front desk able to onboard a clinician while making it
+    // something an admin can now revoke.
+    "providers.manage",
   ],
   PATIENT: [],
 };

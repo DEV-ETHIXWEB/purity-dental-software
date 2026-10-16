@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { UserRole } from "@/generated/prisma/client";
 import {
   PERMISSION_KEYS,
   PERMISSIONS,
@@ -31,17 +32,63 @@ describe("role defaults", () => {
     }
   });
 
-  it("matches the role gates the app already shipped with", () => {
-    // The receptionist grants patient messaging (setMessagingAccess) and
-    // registers patients; the hygienist does neither.
-    expect(roleHasByDefault("RECEPTIONIST", "messaging.grant")).toBe(true);
-    expect(roleHasByDefault("HYGIENIST", "messaging.grant")).toBe(false);
-    expect(roleHasByDefault("RECEPTIONIST", "patients.register")).toBe(true);
+  /*
+   * The defaults must reproduce the role lists the actions used BEFORE they
+   * were converted from `requireRole` to `requirePermission`. Wiring the
+   * gates up was explicitly not meant to take anything away from anyone, so
+   * each case below is the old `requireRole([...])` argument written as the
+   * permission that replaced it. A failure here means a conversion silently
+   * changed who can do something.
+   */
+  it("reproduces the pre-conversion role lists exactly", () => {
+    const cases: [string, (typeof PERMISSION_KEYS)[number], UserRole[]][] = [
+      // requireRole(["DENTIST","HYGIENIST","RECEPTIONIST","ADMIN"])
+      ["book/move/resolve appointment", "schedule.manage", ["DENTIST", "HYGIENIST", "RECEPTIONIST"]],
+      // set-patient-status, updatePatientContact, updatePatientBilling
+      ["edit patient", "patients.manage", ["DENTIST", "HYGIENIST", "RECEPTIONIST"]],
+      // documents, prescriptions, consent forms (was [...STAFF])
+      ["clinical records", "clinical.manage", ["DENTIST", "HYGIENIST", "RECEPTIONIST"]],
+      // mark-invoice-paid staff branch
+      ["record payment", "billing.recordPayment", ["DENTIST", "HYGIENIST", "RECEPTIONIST"]],
+      // requireRole(["DENTIST","HYGIENIST","ADMIN"])
+      ["create invoice", "billing.manage", ["DENTIST", "HYGIENIST"]],
+      ["log treatment", "treatment.log", ["DENTIST", "HYGIENIST"]],
+      // requireRole(["RECEPTIONIST","ADMIN"])
+      ["register / edit demographics", "patients.register", ["RECEPTIONIST"]],
+    ];
 
-    // Dentists own billing; hygienists can look but not change it.
-    expect(roleHasByDefault("DENTIST", "billing.manage")).toBe(true);
-    expect(roleHasByDefault("HYGIENIST", "billing.view")).toBe(true);
-    expect(roleHasByDefault("HYGIENIST", "billing.manage")).toBe(false);
+    const everyStaffRole: UserRole[] = ["DENTIST", "HYGIENIST", "RECEPTIONIST"];
+    for (const [what, permission, allowed] of cases) {
+      for (const role of everyStaffRole) {
+        expect(
+          roleHasByDefault(role, permission),
+          `${role} ${allowed.includes(role) ? "lost" : "gained"} "${what}"`,
+        ).toBe(allowed.includes(role));
+      }
+      // ADMIN holds everything, by construction.
+      expect(roleHasByDefault("ADMIN", permission)).toBe(true);
+    }
+  });
+
+  it("keeps the Team page with the front desk, and out of clinicians' hands", () => {
+    // /receptionist/providers was requireRole([RECEPTIONIST, ADMIN]); the
+    // permission that replaced it has to match that exactly.
+    expect(roleHasByDefault("RECEPTIONIST", "providers.manage")).toBe(true);
+    expect(roleHasByDefault("ADMIN", "providers.manage")).toBe(true);
+    expect(roleHasByDefault("DENTIST", "providers.manage")).toBe(false);
+    expect(roleHasByDefault("HYGIENIST", "providers.manage")).toBe(false);
+  });
+
+  it("keeps staff.manage separate from providers.manage", () => {
+    // The two staff systems stay distinct: the front desk can onboard
+    // clinicians without gaining the Admin portal's full staff control.
+    expect(roleHasByDefault("RECEPTIONIST", "staff.manage")).toBe(false);
+  });
+
+  it("keeps messaging.grant with the front desk only", () => {
+    expect(roleHasByDefault("RECEPTIONIST", "messaging.grant")).toBe(true);
+    expect(roleHasByDefault("DENTIST", "messaging.grant")).toBe(false);
+    expect(roleHasByDefault("HYGIENIST", "messaging.grant")).toBe(false);
   });
 
   it("describes every permission it declares, in a known group", () => {

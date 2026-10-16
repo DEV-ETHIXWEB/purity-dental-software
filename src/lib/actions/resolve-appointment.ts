@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePermission } from "@/lib/auth/authorize";
 import { writeAuditLog } from "@/lib/auth/audit-log";
 import { isUnresolvedPastVisit, type AppointmentOutcome } from "@/lib/appointment-status";
 
@@ -25,7 +25,7 @@ export async function resolveAppointment(params: {
   outcome: AppointmentOutcome;
 }): Promise<ResolveAppointmentResult> {
   try {
-    const session = await requireRole(["DENTIST", "HYGIENIST", "RECEPTIONIST", "ADMIN"]);
+    const session = await requirePermission("schedule.manage");
     const organizationId = session.user.organizationId;
 
     if (params.outcome !== "COMPLETED" && params.outcome !== "NO_SHOW") {

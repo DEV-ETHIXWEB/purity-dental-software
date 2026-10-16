@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePermission } from "@/lib/auth/authorize";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
 import { writeAuditLog } from "@/lib/auth/audit-log";
@@ -24,7 +24,6 @@ interface ActionResult {
   error?: string;
 }
 
-const MANAGERS = ["RECEPTIONIST", "ADMIN"] as const;
 /** The only roles this screen may create — never RECEPTIONIST/ADMIN (privilege escalation) or PATIENT. */
 const CLINICAL_ROLES = new Set<UserRole>(["DENTIST", "HYGIENIST"]);
 
@@ -39,7 +38,7 @@ export async function createProvider(input: {
   role: UserRole;
 }): Promise<ActionResult & { temporaryPassword?: string }> {
   try {
-    const session = await requireRole([...MANAGERS]);
+    const session = await requirePermission("providers.manage");
 
     const name = input.name.trim();
     const email = input.email.trim().toLowerCase();
@@ -84,7 +83,7 @@ export async function updateProvider(input: {
   email: string;
 }): Promise<ActionResult> {
   try {
-    const session = await requireRole([...MANAGERS]);
+    const session = await requirePermission("providers.manage");
     const name = input.name.trim();
     const email = input.email.trim().toLowerCase();
     if (name.length < 2) return { ok: false, error: "Enter the clinician's full name." };
@@ -125,7 +124,7 @@ export async function updateProvider(input: {
 
 export async function setProviderActive(providerId: string, isActive: boolean): Promise<ActionResult> {
   try {
-    const session = await requireRole([...MANAGERS]);
+    const session = await requirePermission("providers.manage");
     const provider = await prisma.user.findFirst({
       where: {
         id: providerId,

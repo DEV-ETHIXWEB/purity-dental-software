@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { requireRole, AuthorizationError } from "@/lib/auth/authorize";
+import { AuthorizationError, requirePermission } from "@/lib/auth/authorize";
 import { writeAuditLog } from "@/lib/auth/audit-log";
 import { patientRegistrationSchema } from "@/lib/patient-registration-schema";
 
@@ -62,7 +62,7 @@ export async function registerPatient(
   // don't get this action.
   let session;
   try {
-    session = await requireRole(["RECEPTIONIST", "ADMIN"]);
+    session = await requirePermission("patients.register");
   } catch (error) {
     if (error instanceof AuthorizationError) {
       return { status: "error", message: error.message };
