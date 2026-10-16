@@ -2,7 +2,6 @@
 
 import { useState, type ComponentType } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import {
@@ -37,6 +36,8 @@ function TileLabel({ children }: { children: string }) {
 }
 
 export interface PatientBillingViewProps {
+  /** The practice number, so "Pay balance" can offer a way to actually pay. */
+  practicePhone?: string | null;
   initialInvoices: InvoiceWithDetails[];
   overview: PatientBillingOverview;
 }
@@ -50,9 +51,8 @@ export interface PatientBillingViewProps {
  * payment" is disabled outright when there's nothing payable rather than
  * opening an empty modal.
  */
-export function PatientBillingView({ initialInvoices, overview }: PatientBillingViewProps) {
+export function PatientBillingView({ initialInvoices, overview, practicePhone }: PatientBillingViewProps) {
   const timeZone = useClinicTimeZone();
-  const router = useRouter();
   const [payTarget, setPayTarget] = useState<InvoiceWithDetails | null>(null);
 
   const outstanding = initialInvoices.filter(
@@ -62,11 +62,6 @@ export function PatientBillingView({ initialInvoices, overview }: PatientBilling
 
   // Oldest unpaid invoice — the one "Make payment" should act on.
   const nextPayable = [...outstanding].sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime())[0];
-
-  function handleConfirmed() {
-    setPayTarget(null);
-    router.refresh();
-  }
 
   const tiles: { label: string; Icon: ComponentType<PurityIconProps>; href?: string; onClick?: () => void; disabled?: boolean }[] = [
     { label: "View invoices", Icon: DocumentIconFilled, href: "#invoices" },
@@ -258,8 +253,8 @@ export function PatientBillingView({ initialInvoices, overview }: PatientBilling
 
       <PayBalanceModal
         invoice={payTarget}
+        phone={practicePhone}
         onClose={() => setPayTarget(null)}
-        onConfirmed={handleConfirmed}
       />
     </>
   );

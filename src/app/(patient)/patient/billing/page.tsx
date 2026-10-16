@@ -4,7 +4,8 @@ import { PatientBillingView } from "./PatientBillingView";
 import { requirePageRole } from "@/lib/auth/require-portal";
 import { getPatientForUser } from "@/lib/data/patients";
 import { listInvoicesForPatient, patientBillingOverview } from "@/lib/data/billing";
-import { clinicTimeZone } from "@/lib/data/organization";
+import { getPracticeDetails } from "@/lib/data/organization";
+import { DEFAULT_CLINIC_TIMEZONE } from "@/lib/datetime";
 
 export const metadata: Metadata = {
   title: "Bills",
@@ -13,7 +14,8 @@ export const metadata: Metadata = {
 
 export default async function PatientBillingPage() {
   const session = await requirePageRole(["PATIENT"]);
-  const timeZone = await clinicTimeZone(session.user.organizationId);
+  const practice = await getPracticeDetails(session.user.organizationId);
+  const timeZone = practice?.timezone ?? DEFAULT_CLINIC_TIMEZONE;
   const patient = await getPatientForUser(session.user.id);
   if (!patient) notFound();
 
@@ -32,7 +34,7 @@ export default async function PatientBillingPage() {
         </p>
       </div>
 
-      <PatientBillingView initialInvoices={myInvoices} overview={overview} />
+      <PatientBillingView initialInvoices={myInvoices} overview={overview} practicePhone={practice?.phone} />
     </div>
   );
 }

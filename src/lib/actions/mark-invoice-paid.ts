@@ -1,6 +1,6 @@
 "use server";
 
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePermission } from "@/lib/auth/authorize";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/auth/audit-log";
 
@@ -26,7 +26,17 @@ export interface MarkInvoicePaidResult {
  */
 export async function markInvoicePaid(invoiceId: string): Promise<MarkInvoicePaidResult> {
   try {
-    const session = await requireRole(["DENTIST", "HYGIENIST", "RECEPTIONIST", "ADMIN", "PATIENT"]);
+    /*
+     * Staff only, via `billing.recordPayment`.
+     *
+     * Patients used to be allowed through here on an ownership check, which
+     * meant someone could clear their own balance from the portal without
+     * any money changing hands — there is no payment processor, so
+     * "Pay balance" marked the invoice PAID and nothing else. Recording a
+     * payment is now something the practice does; the patient side asks for
+     * one instead (see `PayBalanceModal`).
+     */
+    const session = await requirePermission("billing.recordPayment");
 
     const found = await prisma.$transaction(async (tx) => {
       const invoice = await tx.invoice.findFirst({
@@ -34,9 +44,6 @@ export async function markInvoicePaid(invoiceId: string): Promise<MarkInvoicePai
         include: { patient: true },
       });
       if (!invoice) return false;
-      if (session.user.role === "PATIENT" && invoice.patient.userId !== session.user.id) {
-        return false;
-      }
       if (invoice.status === "PAID") return true;
 
       // No payment-method capture UI exists yet (that would be a separate
