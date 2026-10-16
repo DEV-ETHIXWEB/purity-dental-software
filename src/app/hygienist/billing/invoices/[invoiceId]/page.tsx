@@ -5,15 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { InvoiceStatusBadge } from "@/components/dentist/InvoiceStatusBadge";
 import { SendInvoiceReminderButton } from "@/components/dentist/SendInvoiceReminderButton";
-import {
-  TableContainer,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableHeaderCell,
-  TableCell,
-} from "@/components/ui/Table";
+import { InvoiceLineItemsTable } from "@/components/dentist/InvoiceLineItemsTable";
 import { requirePageRole } from "@/lib/auth/require-portal";
 import { getInvoiceById } from "@/lib/data/billing";
 import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
@@ -77,34 +69,7 @@ export default async function HygienistInvoiceDetailPage({
             <CardTitle>Line Items</CardTitle>
           </CardHeader>
           <CardContent>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableHeaderCell>Description</TableHeaderCell>
-                    <TableHeaderCell>Code</TableHeaderCell>
-                    <TableHeaderCell>Qty</TableHeaderCell>
-                    <TableHeaderCell>Unit Price</TableHeaderCell>
-                    <TableHeaderCell>Amount</TableHeaderCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {invoice.lineItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="text-text-primary">{item.description}</TableCell>
-                      <TableCell className="text-text-secondary">{item.procedureCode}</TableCell>
-                      <TableCell className="text-text-secondary">{item.quantity}</TableCell>
-                      <TableCell className="text-text-secondary">
-                        {formatCentsAsCurrency(item.unitPriceCents)}
-                      </TableCell>
-                      <TableCell className="font-medium text-text-primary">
-                        {formatCentsAsCurrency(item.unitPriceCents * item.quantity)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <InvoiceLineItemsTable items={invoice.lineItems} column="code" />
           </CardContent>
         </Card>
 

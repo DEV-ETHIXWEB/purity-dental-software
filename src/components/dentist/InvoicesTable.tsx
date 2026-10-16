@@ -102,7 +102,16 @@ export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
         ))}
       </div>
 
-      <TableContainer>
+      {/*
+       * Table on desktop, stacked cards on a phone — matching PatientsTable,
+       * StaffTable and the two invoice/treatment tables.
+       *
+       * The shared `Table` primitive is `min-w-[640px]`, and this list has
+       * six columns, so at 375px it pushed THE PAGE sideways (548px of
+       * content in a 375px viewport) rather than scrolling inside its own
+       * card. It was the last page-level horizontal scroll in the app.
+       */}
+      <TableContainer className="hidden md:block">
         <Table>
           <TableHead>
             <TableRow>
@@ -175,6 +184,70 @@ export function InvoicesTable({ invoices, basePath = "" }: InvoicesTableProps) {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <ul className="flex flex-col gap-3 md:hidden">
+        {pageItems.map((invoice) => {
+          const isPaid = invoice.status === "PAID";
+          return (
+            <li
+              key={invoice.id}
+              className="rounded-[var(--radius-lg)] border border-border bg-surface p-3 shadow-card"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <Link
+                    href={`${basePath}/billing/invoices/${invoice.id}`}
+                    className="touch-link truncate text-sm font-medium text-text-primary hover:text-[var(--color-brand-blue-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)] rounded-[var(--radius-sm)]"
+                  >
+                    {invoiceNumber(invoice)}
+                  </Link>
+                  <p className="truncate text-xs text-text-secondary">
+                    {patientFullName(invoice.patient)}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-medium tabular-nums text-text-primary">
+                    {formatCentsAsCurrency(invoice.totalCents)}
+                  </p>
+                  <p className="text-xs text-text-secondary">
+                    {formatClinicDate(invoice.issuedAt, timeZone)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <InvoiceStatusBadge status={invoice.status} />
+                {!isPaid && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Mark ${invoiceNumber(invoice)} as paid`}
+                      disabled={pendingId === invoice.id}
+                      onClick={() => handleMarkPaid(invoice.id)}
+                    >
+                      <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={
+                        remindedIds[invoice.id]
+                          ? `Reminder sent for ${invoiceNumber(invoice)}`
+                          : `Send reminder for ${invoiceNumber(invoice)}`
+                      }
+                      disabled={remindingId === invoice.id || remindedIds[invoice.id]}
+                      onClick={() => handleSendReminder(invoice)}
+                    >
+                      <Send className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
 
       {filtered.length === 0 && (
         <p className="py-8 text-center text-sm text-text-secondary">No invoices match this filter.</p>
