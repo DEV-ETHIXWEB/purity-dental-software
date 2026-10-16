@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { InvoicesTable } from "@/components/dentist/InvoicesTable";
-import { requirePageRole } from "@/lib/auth/require-portal";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 import { listInvoices } from "@/lib/data/billing";
 
 export const metadata: Metadata = {
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HygienistInvoicesPage() {
-  const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
+  const session = await requirePagePermission("billing.view", ["HYGIENIST", "ADMIN"]);
   const invoices = await listInvoices(session.user.organizationId);
 
   return (

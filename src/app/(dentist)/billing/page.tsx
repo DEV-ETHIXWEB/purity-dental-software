@@ -8,7 +8,7 @@ import { CashflowRangeSelect, type CashflowRange } from "@/components/dentist/Ca
 import { CollectionRateRing } from "@/components/dentist/CollectionRateRing";
 import { OutstandingByAgeChart } from "@/components/dentist/OutstandingByAgeChart";
 import { RecentTransactionsList } from "@/components/dentist/RecentTransactionsList";
-import { requirePageRole } from "@/lib/auth/require-portal";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 import { billingSummary, cashflowTrend, outstandingByAge, listInvoices } from "@/lib/data/billing";
 import { formatCentsAsCurrency } from "@/lib/billing-format";
 import { clinicTimeZone } from "@/lib/data/organization";
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BillingDashboardPage({ searchParams }: PageProps<"/billing">) {
-  const session = await requirePageRole(["DENTIST", "ADMIN"]);
+  const session = await requirePagePermission("billing.view", ["DENTIST", "ADMIN"]);
   const timeZone = await clinicTimeZone(session.user.organizationId);
   const { organizationId } = session.user;
   const { range: rangeParam } = await searchParams;

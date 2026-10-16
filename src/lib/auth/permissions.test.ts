@@ -9,6 +9,7 @@ import {
   parseOverrides,
   effectivePermissions,
   hasPermission,
+  permissionListFor,
 } from "./permissions";
 
 describe("role defaults", () => {
@@ -215,5 +216,35 @@ describe("hasPermission", () => {
     expect(
       hasPermission({ role: "PATIENT", permissionOverrides: { "audit.view": true } }, "audit.view"),
     ).toBe(true);
+  });
+});
+
+describe("permissionListFor", () => {
+  it("is the effective set, flattened for the client", () => {
+    const list = permissionListFor({ role: "DENTIST" });
+
+    expect(Array.isArray(list)).toBe(true);
+    expect(list).toContain("billing.view");
+    expect(list).not.toContain("staff.manage");
+  });
+
+  it("carries overrides through, both directions", () => {
+    const list = permissionListFor({
+      role: "HYGIENIST",
+      permissionOverrides: { "billing.view": false, "audit.view": true },
+    });
+
+    expect(list).not.toContain("billing.view");
+    expect(list).toContain("audit.view");
+  });
+
+  it("is empty for a patient, so the provider grants a patient nothing", () => {
+    expect(permissionListFor({ role: "PATIENT" })).toEqual([]);
+  });
+
+  it("is serializable — a Set would not survive the server/client boundary", () => {
+    const list = permissionListFor({ role: "RECEPTIONIST" });
+
+    expect(JSON.parse(JSON.stringify(list))).toEqual(list);
   });
 });

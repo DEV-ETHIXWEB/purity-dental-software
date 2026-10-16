@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { PortalShell } from "@/components/shell/PortalShell";
+import { PermissionsProvider } from "@/components/auth/Permissions";
 import { dentistShellConfig } from "@/components/shell/nav-config";
 import { requirePortalRole } from "@/lib/auth/require-portal";
+import { permissionListFor } from "@/lib/auth/permissions";
 import { listFollowUps } from "@/lib/data/patients";
 import { staffNotifications } from "@/lib/data/notifications";
 import { getOrganization } from "@/lib/data/organization";
@@ -29,15 +31,22 @@ export default async function DentistPortalLayout({
   ]);
 
   return (
-    <PortalShell
-      {...dentistShellConfig(
-        { name: session.user.name, avatarUrl: session.user.avatarUrl ?? undefined, role: "Dentist", presence: session.user.presence },
-        organization?.timezone ?? DEFAULT_CLINIC_TIMEZONE,
-        followUps.length > 0 || notifications.some((n) => n.unread),
-        notifications,
-      )}
-    >
-      {children}
-    </PortalShell>
+    /*
+     * What this viewer may do, for the Client Components that render
+     * the controls. Here rather than inside `PortalShell` because the
+     * patient portal shares that shell and holds no staff permissions.
+     */
+    <PermissionsProvider permissions={permissionListFor(session.user)}>
+      <PortalShell
+        {...dentistShellConfig(
+          { name: session.user.name, avatarUrl: session.user.avatarUrl ?? undefined, role: "Dentist", presence: session.user.presence },
+          organization?.timezone ?? DEFAULT_CLINIC_TIMEZONE,
+          followUps.length > 0 || notifications.some((n) => n.unread),
+          notifications,
+        )}
+      >
+        {children}
+      </PortalShell>
+    </PermissionsProvider>
   );
 }

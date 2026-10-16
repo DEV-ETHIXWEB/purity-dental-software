@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { InvoiceStatusBadge } from "@/components/dentist/InvoiceStatusBadge";
 import { SendInvoiceReminderButton } from "@/components/dentist/SendInvoiceReminderButton";
 import { InvoiceLineItemsTable } from "@/components/dentist/InvoiceLineItemsTable";
-import { requirePageRole } from "@/lib/auth/require-portal";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 import { getInvoiceById } from "@/lib/data/billing";
 import { formatCentsAsCurrency, invoiceNumber } from "@/lib/billing-format";
 import { patientFullName } from "@/lib/patient-format";
@@ -16,7 +16,7 @@ import { formatClinicDate } from "@/lib/datetime";
 export async function generateMetadata({
   params,
 }: PageProps<"/hygienist/billing/invoices/[invoiceId]">): Promise<Metadata> {
-  const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
+  const session = await requirePagePermission("billing.view", ["HYGIENIST", "ADMIN"]);
   const { invoiceId } = await params;
   const invoice = await getInvoiceById(session.user.organizationId, invoiceId);
   return {
@@ -28,7 +28,7 @@ export async function generateMetadata({
 export default async function HygienistInvoiceDetailPage({
   params,
 }: PageProps<"/hygienist/billing/invoices/[invoiceId]">) {
-  const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
+  const session = await requirePagePermission("billing.view", ["HYGIENIST", "ADMIN"]);
   const timeZone = await clinicTimeZone(session.user.organizationId);
   const { invoiceId } = await params;
   const invoice = await getInvoiceById(session.user.organizationId, invoiceId);

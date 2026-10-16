@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { requirePageRole } from "@/lib/auth/require-portal";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 import { NewStaffForm } from "@/components/admin/NewStaffForm";
 
 export const metadata: Metadata = {
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NewStaffPage() {
-  await requirePageRole(["ADMIN"]);
+  await requirePagePermission("staff.manage", ["ADMIN"]);
 
   return (
     <div className="flex flex-col gap-6">

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
-import { requirePageRole } from "@/lib/auth/require-portal";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 import { listAuditEntries, auditActors, auditEntryCount, AUDIT_PAGE_SIZE } from "@/lib/data/audit";
 import { clinicTimeZone } from "@/lib/data/organization";
 import { formatClinicDateTime } from "@/lib/datetime";
@@ -19,7 +19,7 @@ export default async function AdminAuditPage({
 }: {
   searchParams: Promise<{ q?: string; actor?: string; take?: string }>;
 }) {
-  const session = await requirePageRole(["ADMIN"]);
+  const session = await requirePagePermission("audit.view", ["ADMIN"]);
   const organizationId = session.user.organizationId;
   const { q, actor, take } = await searchParams;
 

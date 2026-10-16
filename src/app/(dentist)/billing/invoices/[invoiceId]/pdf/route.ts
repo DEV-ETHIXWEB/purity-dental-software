@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { requireRole } from "@/lib/auth/authorize";
+import { requirePermission } from "@/lib/auth/authorize";
 import { getInvoiceById } from "@/lib/data/billing";
 import { invoiceNumber } from "@/lib/billing-format";
 import { InvoicePdfDocument } from "@/components/dentist/InvoicePdfDocument";
@@ -23,7 +23,9 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ invoiceId: string }> },
 ) {
-  const session = await requireRole(["DENTIST", "ADMIN"]);
+  // Same grant as the invoice page this downloads from: a revoked
+  // `billing.view` must not leave the PDF reachable by URL.
+  const session = await requirePermission("billing.view");
   const { invoiceId } = await params;
   const [invoice, practice] = await Promise.all([
     getInvoiceById(session.user.organizationId, invoiceId),

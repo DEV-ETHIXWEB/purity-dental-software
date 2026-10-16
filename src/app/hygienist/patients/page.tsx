@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PatientsTable } from "@/components/dentist/PatientsTable";
 import { OverdueRecallsCard } from "@/components/hygienist/OverdueRecallsCard";
-import { requirePageRole } from "@/lib/auth/require-portal";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 import { listPatients } from "@/lib/data/patients";
 
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default async function HygienistPatientsPage({
   searchParams,
 }: PageProps<"/hygienist/patients">) {
-  const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
+  const session = await requirePagePermission("patients.view", ["HYGIENIST", "ADMIN"]);
   const patients = await listPatients(session.user.organizationId);
   const { q } = await searchParams;
 

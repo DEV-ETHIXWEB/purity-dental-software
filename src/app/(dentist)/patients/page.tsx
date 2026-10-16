@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PatientsTable } from "@/components/dentist/PatientsTable";
-import { requirePageRole } from "@/lib/auth/require-portal";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 import { listPatients } from "@/lib/data/patients";
 
 export const metadata: Metadata = {
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default async function PatientsPage({
   searchParams,
 }: PageProps<"/patients">) {
-  const session = await requirePageRole(["DENTIST", "ADMIN"]);
+  const session = await requirePagePermission("patients.view", ["DENTIST", "ADMIN"]);
   const patients = await listPatients(session.user.organizationId);
   const { q } = await searchParams;
 

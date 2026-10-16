@@ -205,6 +205,19 @@ export function effectivePermissions(role: UserRole, rawOverrides: unknown): Set
   return result;
 }
 
+/**
+ * The same set as `effectivePermissions`, flattened for the client.
+ *
+ * `PermissionsProvider` crosses the server/client boundary, where a `Set`
+ * is not serializable — so the staff layouts hand it this array.
+ */
+export function permissionListFor(user: {
+  role: UserRole;
+  permissionOverrides?: unknown;
+}): PermissionKey[] {
+  return [...effectivePermissions(user.role, user.permissionOverrides)];
+}
+
 /** Whether this user holds a permission, accounting for their overrides. */
 export function hasPermission(
   user: { role: UserRole; permissionOverrides?: unknown },

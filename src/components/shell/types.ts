@@ -1,11 +1,22 @@
 import type { UserPresence } from "@/generated/prisma/client";
 import type { ShellIconKey } from "./icon-map";
+import type { PermissionKey } from "@/lib/auth/permissions";
 
 /** A single primary-navigation entry in the portal sidebar. */
 export interface ShellNavItem {
   href: string;
   label: string;
   icon: ShellIconKey;
+  /**
+   * The permission this destination needs, when it needs one.
+   *
+   * `PortalShell` drops the item for a viewer who doesn't hold it. Without
+   * this, revoking a permission left the nav pointing at a page that now
+   * redirects — a link that looks live and bounces you back to the
+   * dashboard. Items with no permission (Dashboard, Settings) are always
+   * shown.
+   */
+  permission?: PermissionKey;
 }
 
 /** Minimal shape needed to render the TopBar's identity + avatar. */
@@ -70,6 +81,8 @@ export interface ShellConfig {
     label: string;
     icon: ShellIconKey;
     href: string;
+    /** Hidden when the viewer lacks this, same as a nav item's. */
+    permission?: PermissionKey;
   };
   /** This portal's patient list route — the top bar's search form submits here as `?q=`. */
   patientsHref: string;

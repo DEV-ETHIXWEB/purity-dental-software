@@ -1,11 +1,12 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { MobileNavDrawer } from "./MobileNavDrawer";
 import { BottomNav } from "./BottomNav";
 import { ClinicTimeZoneProvider } from "./ClinicTimeZone";
+import { useCan } from "@/components/auth/Permissions";
 import type { ShellConfig } from "./types";
 
 export interface PortalShellProps extends ShellConfig {
@@ -35,10 +36,36 @@ export function PortalShell({
   timeZone,
 }: PortalShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const can = useCan();
+
+  /*
+   * Nav is filtered to what this viewer may actually open.
+   *
+   * Pages are gated on permissions (`requirePagePermission`), so an item
+   * whose permission has been revoked would otherwise render as a live link
+   * that bounces the clicker straight back to their dashboard. An item with
+   * no `permission` is always shown.
+   *
+   * The patient portal renders this same shell outside any
+   * `PermissionsProvider`, where `can()` is false for everything — its nav
+   * items carry no permission, so nothing is dropped.
+   */
+  const visibleNavItems = useMemo(
+    () => navItems.filter((item) => !item.permission || can(item.permission)),
+    [navItems, can],
+  );
+  const visibleBottomNavItems = useMemo(
+    () => bottomNavItems?.filter((item) => !item.permission || can(item.permission)),
+    [bottomNavItems, can],
+  );
+  const visiblePrimaryAction =
+    primaryAction && (!primaryAction.permission || can(primaryAction.permission))
+      ? primaryAction
+      : undefined;
 
   // Portals with a tab bar reach every primary destination without the
   // drawer, so the top bar drops the hamburger for them.
-  const hasBottomNav = Boolean(bottomNavItems && bottomNavItems.length > 0);
+  const hasBottomNav = Boolean(visibleBottomNavItems && visibleBottomNavItems.length > 0);
 
   return (
     /*
@@ -61,13 +88,13 @@ export function PortalShell({
             or `self-start` needed now that the shell is viewport-sized, and
             the profile/log-out footer stays on screen at any scroll position. */}
         <div className="hidden lg:block">
-          <Sidebar variant="desktop" navItems={navItems} homeHref={homeHref} user={user} />
+          <Sidebar variant="desktop" navItems={visibleNavItems} homeHref={homeHref} user={user} />
         </div>
 
         <MobileNavDrawer
           open={mobileNavOpen}
           onClose={() => setMobileNavOpen(false)}
-          navItems={navItems}
+          navItems={visibleNavItems}
           homeHref={homeHref}
           user={user}
         />
@@ -80,7 +107,7 @@ export function PortalShell({
             showSearch={showSearch}
             homeHref={homeHref}
             searchPlaceholder={searchPlaceholder}
-            primaryAction={primaryAction}
+            primaryAction={visiblePrimaryAction}
             patientsHref={patientsHref}
             profileHref={profileHref}
             messagesHref={messagesHref}
@@ -103,7 +130,7 @@ export function PortalShell({
 
           {/* A flex sibling of <main>, not an overlay — see BottomNav for why
               that keeps it clear of the scrolling content for free. */}
-          {hasBottomNav && bottomNavItems && <BottomNav items={bottomNavItems} />}
+          {hasBottomNav && visibleBottomNavItems && <BottomNav items={visibleBottomNavItems} />}
         </div>
       </div>
     </ClinicTimeZoneProvider>

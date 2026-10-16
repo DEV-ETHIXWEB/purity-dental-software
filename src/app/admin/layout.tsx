@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { PortalShell } from "@/components/shell/PortalShell";
+import { PermissionsProvider } from "@/components/auth/Permissions";
 import { adminShellConfig } from "@/components/shell/nav-config";
 import { requirePortalRole } from "@/lib/auth/require-portal";
+import { permissionListFor } from "@/lib/auth/permissions";
 import { getOrganization } from "@/lib/data/organization";
 import { DEFAULT_CLINIC_TIMEZONE } from "@/lib/datetime";
 
@@ -17,18 +19,25 @@ export default async function AdminPortalLayout({ children }: { children: ReactN
   const organization = await getOrganization(session.user.organizationId);
 
   return (
-    <PortalShell
-      {...adminShellConfig(
-        {
-          name: session.user.name,
-          avatarUrl: session.user.avatarUrl ?? undefined,
-          role: "Admin",
-          presence: session.user.presence,
-        },
-        organization?.timezone ?? DEFAULT_CLINIC_TIMEZONE,
-      )}
-    >
-      {children}
-    </PortalShell>
+    /*
+     * What this viewer may do, for the Client Components that render
+     * the controls. Here rather than inside `PortalShell` because the
+     * patient portal shares that shell and holds no staff permissions.
+     */
+    <PermissionsProvider permissions={permissionListFor(session.user)}>
+      <PortalShell
+        {...adminShellConfig(
+          {
+            name: session.user.name,
+            avatarUrl: session.user.avatarUrl ?? undefined,
+            role: "Admin",
+            presence: session.user.presence,
+          },
+          organization?.timezone ?? DEFAULT_CLINIC_TIMEZONE,
+        )}
+      >
+        {children}
+      </PortalShell>
+    </PermissionsProvider>
   );
 }

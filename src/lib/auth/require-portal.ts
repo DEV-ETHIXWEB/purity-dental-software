@@ -74,12 +74,30 @@ export async function requirePageRole(allowedRoles: UserRole[]) {
  *
  * Use this on any page whose actions are permission-gated, otherwise the
  * page renders controls that every click will refuse.
+ *
+ * `allowedRoles` is kept alongside the permission rather than replaced by
+ * it. A permission answers "may this person do the thing", not "does this
+ * person belong in this portal" — a dentist holds `patients.view` but has
+ * no business on the Hygienist portal's copy of the patients list. The
+ * portal layout would redirect them anyway; checking both here means the
+ * page does not quietly depend on that.
+ *
+ * Never gate a portal's own dashboard with this. The redirect target IS
+ * that dashboard, so a viewer who fails the check would be redirected to
+ * the page that redirects them.
  */
-export async function requirePagePermission(permission: PermissionKey) {
+export async function requirePagePermission(
+  permission: PermissionKey,
+  allowedRoles?: UserRole[],
+) {
   const session = await getCurrentSession();
 
   if (!session) {
     redirect("/login");
+  }
+
+  if (allowedRoles && !allowedRoles.includes(session.user.role)) {
+    redirect(dashboardPathForRole(session.user.role));
   }
 
   if (!hasPermission(session.user, permission)) {

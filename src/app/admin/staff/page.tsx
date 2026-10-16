@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { UserPlus } from "lucide-react";
-import { requirePageRole } from "@/lib/auth/require-portal";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 import { listStaff } from "@/lib/data/staff";
 import { StaffTable } from "@/components/admin/StaffTable";
 
@@ -15,7 +15,7 @@ export default async function AdminStaffPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  const session = await requirePageRole(["ADMIN"]);
+  const session = await requirePagePermission("staff.manage", ["ADMIN"]);
   const [staff, { q }] = await Promise.all([
     listStaff(session.user.organizationId),
     searchParams,

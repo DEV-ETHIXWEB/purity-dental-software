@@ -12,7 +12,7 @@ import { ToothChart } from "@/components/dentist/ToothChart";
 import { PatientDocumentsPanel } from "@/components/dentist/PatientDocumentsPanel";
 import { PatientPrescriptionsPanel } from "@/components/dentist/PatientPrescriptionsPanel";
 import { PatientConsentFormsPanel } from "@/components/dentist/PatientConsentFormsPanel";
-import { requirePageRole } from "@/lib/auth/require-portal";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 import { getPatientById } from "@/lib/data/patients";
 import { patientFullName } from "@/lib/patient-format";
 import { treatmentPlanForPatient, perioChartForPatient } from "@/lib/data/treatment";
@@ -22,7 +22,7 @@ import { clinicTimeZone } from "@/lib/data/organization";
 export async function generateMetadata({
   params,
 }: PageProps<"/hygienist/patients/[patientId]">): Promise<Metadata> {
-  const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
+  const session = await requirePagePermission("patients.view", ["HYGIENIST", "ADMIN"]);
   const { patientId } = await params;
   const patient = await getPatientById(session.user.organizationId, patientId);
   return {
@@ -36,7 +36,7 @@ export async function generateMetadata({
 export default async function HygienistPatientProfilePage({
   params,
 }: PageProps<"/hygienist/patients/[patientId]">) {
-  const session = await requirePageRole(["HYGIENIST", "ADMIN"]);
+  const session = await requirePagePermission("patients.view", ["HYGIENIST", "ADMIN"]);
   const timeZone = await clinicTimeZone(session.user.organizationId);
   const { patientId } = await params;
   const patient = await getPatientById(session.user.organizationId, patientId);

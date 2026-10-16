@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ReceptionistProvidersPage() {
-  const session = await requirePagePermission("providers.manage");
+  const session = await requirePagePermission("providers.manage", ["RECEPTIONIST", "ADMIN"]);
   const providers = await listAllProviders(session.user.organizationId);
 
   return (

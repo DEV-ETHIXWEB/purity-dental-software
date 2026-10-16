@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requirePageRole } from "@/lib/auth/require-portal";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 import { getStaffMember } from "@/lib/data/staff";
 import { StaffDetailsPanel } from "@/components/admin/StaffDetailsPanel";
 import { PermissionsPanel } from "@/components/admin/PermissionsPanel";
@@ -12,7 +12,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ userId: string }>;
 }): Promise<Metadata> {
-  const session = await requirePageRole(["ADMIN"]);
+  const session = await requirePagePermission("staff.manage", ["ADMIN"]);
   const { userId } = await params;
   const member = await getStaffMember(session.user.organizationId, userId);
   return { title: member ? member.name : "Staff member" };
@@ -23,7 +23,7 @@ export default async function StaffMemberPage({
 }: {
   params: Promise<{ userId: string }>;
 }) {
-  const session = await requirePageRole(["ADMIN"]);
+  const session = await requirePagePermission("staff.manage", ["ADMIN"]);
   const { userId } = await params;
 
   // Org-scoped read: an admin at another practice passing a valid id must

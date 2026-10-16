@@ -2,13 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PatientRegistrationForm } from "@/components/receptionist/PatientRegistrationForm";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 
 export const metadata: Metadata = {
   title: "Register Patient",
   description: "Register a new patient with contact, demographic, and insurance details.",
 };
 
-export default function RegisterPatientPage() {
+export default async function RegisterPatientPage() {
+  // This page had no gate of its own — it relied entirely on the portal
+  // layout's role check, so the one screen whose whole purpose is a
+  // permission-gated action was the one screen not checking it.
+  await requirePagePermission("patients.register", ["RECEPTIONIST", "ADMIN"]);
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div>

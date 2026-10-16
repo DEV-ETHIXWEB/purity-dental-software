@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { requirePageRole } from "@/lib/auth/require-portal";
+import { requirePagePermission } from "@/lib/auth/require-portal";
 import { getPracticeDetails } from "@/lib/data/organization";
 import { PracticeSettingsForm } from "@/components/admin/PracticeSettingsForm";
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminPracticePage() {
-  const session = await requirePageRole(["ADMIN"]);
+  const session = await requirePagePermission("practice.manage", ["ADMIN"]);
   const practice = await getPracticeDetails(session.user.organizationId);
   if (!practice) notFound();
 
