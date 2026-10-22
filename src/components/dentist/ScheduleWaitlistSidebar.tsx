@@ -40,7 +40,8 @@ export function ScheduleWaitlistSidebar({ entries, bookingId, onBook }: Schedule
           </span>
         )}
       </div>
-      {entries.length > 0 && (
+      {/* Describes dragging, which only works for someone who may book. */}
+      {entries.length > 0 && onBook && (
         <p className="mb-3 text-xs text-text-secondary">
           Drag a patient onto any slot to book them into it.
         </p>
