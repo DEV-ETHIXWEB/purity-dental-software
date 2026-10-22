@@ -175,8 +175,8 @@ export function PracticeScheduleBoard({
 
       <Card>
       <CardContent>
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap items-center gap-3 xl:shrink-0">
             <h2 className="text-base font-semibold text-text-primary">{dayLabel}</h2>
             {mayManageSchedule && (
               <Button size="sm" onClick={() => setBookingOpen(true)}>
@@ -184,14 +184,14 @@ export function PracticeScheduleBoard({
               </Button>
             )}
           </div>
-          <div role="tablist" aria-label="Filter schedule by provider" className="flex flex-wrap gap-2">
+          <div role="tablist" aria-label="Filter schedule by provider" className="-mx-1 flex min-w-0 flex-nowrap gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] xl:flex-1 [&::-webkit-scrollbar]:hidden">
             <button
               type="button"
               role="tab"
               aria-selected={providerFilter === "ALL"}
               onClick={() => setProviderFilter("ALL")}
               className={cn(
-                "rounded-[var(--radius-md)] px-3.5 py-1.5 text-sm font-medium transition-colors",
+                "shrink-0 whitespace-nowrap rounded-[var(--radius-md)] px-3.5 py-1.5 text-sm font-medium transition-colors",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]",
                 providerFilter === "ALL"
                   ? "bg-surface-sunken text-text-primary"
@@ -211,7 +211,7 @@ export function PracticeScheduleBoard({
                   // Hand-rolled tabs, so they miss `TabsTrigger`'s touch
                   // floor; `inline-flex` keeps the label centred once the
                   // 44px minimum kicks in on phones.
-                  "inline-flex items-center justify-center rounded-[var(--radius-md)] px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  "inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[var(--radius-md)] px-3.5 py-1.5 text-sm font-medium transition-colors",
                   "min-h-11 sm:min-h-0",
                   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-blue)]",
                   providerFilter === provider.id

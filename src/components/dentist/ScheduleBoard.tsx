@@ -164,7 +164,7 @@ export function ScheduleBoard({
                   <TabsTrigger value="past">Past</TabsTrigger>
                 </TabsList>
                 {mayManageSchedule && (
-                  <Button size="sm" onClick={() => setBookingOpen(true)}>
+                  <Button size="sm" className="md:hidden" onClick={() => setBookingOpen(true)}>
                     New appointment
                   </Button>
                 )}

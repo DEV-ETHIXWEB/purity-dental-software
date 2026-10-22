@@ -25,7 +25,7 @@ export function dentistShellConfig(
       { href: "/settings", label: "Settings", icon: "settings" },
     ],
     user,
-    searchPlaceholder: "Search patients by name, email, or phone…",
+    searchPlaceholder: "Search patients…",
     primaryAction: { label: "New Appointment", icon: "plus", href: "/schedule?book=1", permission: "schedule.manage" },
     // Settings is deliberately absent, matching the Patient portal: it's one
     // tap away in the top bar's avatar menu, and a further tab would squeeze
@@ -61,7 +61,7 @@ export function hygienistShellConfig(
       { href: "/hygienist/settings", label: "Settings", icon: "settings" },
     ],
     user,
-    searchPlaceholder: "Search patients by name, email, or phone…",
+    searchPlaceholder: "Search patients…",
     primaryAction: { label: "New Appointment", icon: "plus", href: "/hygienist/schedule?book=1", permission: "schedule.manage" },
     // Settings is deliberately absent, matching the Patient portal: it's one
     // tap away in the top bar's avatar menu, and a further tab would squeeze
@@ -104,7 +104,7 @@ export function receptionistShellConfig(
       { href: "/receptionist/settings", label: "Settings", icon: "settings" },
     ],
     user,
-    searchPlaceholder: "Search patients by name, email, or phone…",
+    searchPlaceholder: "Search patients…",
     primaryAction: {
       label: "Register Patient",
       icon: "userPlus",
