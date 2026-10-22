@@ -32,7 +32,7 @@ const STAGGER = ["stagger-0", "stagger-1", "stagger-2", "stagger-3", "stagger-4"
 export function ScheduleWaitlistSidebar({ entries, bookingId, onBook }: ScheduleWaitlistSidebarProps) {
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between gap-2">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-text-primary">Open Time / ASAP</h2>
         {entries.length > 0 && (
           <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-info-bg px-1.5 text-xs font-semibold text-[var(--color-brand-blue-text)]">
@@ -40,12 +40,6 @@ export function ScheduleWaitlistSidebar({ entries, bookingId, onBook }: Schedule
           </span>
         )}
       </div>
-      {/* Describes dragging, which only works for someone who may book. */}
-      {entries.length > 0 && onBook && (
-        <p className="mb-3 text-xs text-text-secondary">
-          Drag a patient onto any slot to book them into it.
-        </p>
-      )}
       {entries.length === 0 ? (
         <p className="text-sm text-text-secondary">No patients waiting for an opening.</p>
       ) : (

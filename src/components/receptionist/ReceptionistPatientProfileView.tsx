@@ -155,8 +155,8 @@ export function ReceptionistPatientProfileView({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-1">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-3">
+        <div className="xl:col-span-1">
           <Card className="divide-y divide-border">
             <ContactDetailsCard patient={patient} canEdit />
             <section className="p-4">
@@ -183,7 +183,7 @@ export function ReceptionistPatientProfileView({
           </Card>
         </div>
 
-        <div className="lg:col-span-2">
+        <div className="xl:col-span-2">
           <Card>
             <CardContent>
               <Tabs defaultValue="overview">

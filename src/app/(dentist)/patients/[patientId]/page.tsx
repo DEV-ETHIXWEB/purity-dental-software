@@ -89,7 +89,7 @@ export default async function PatientProfilePage({
        * still its own editable section — `divide-x` just makes the seams
        * read as columns instead of boxes.
        */}
-      <Card className="animate-rise-in stagger-0 grid grid-cols-1 divide-y divide-border transition-shadow duration-300 ease-out hover:shadow-card-hover lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+      <Card className="animate-rise-in stagger-0 grid grid-cols-1 divide-y divide-border transition-shadow duration-300 ease-out hover:shadow-card-hover xl:grid-cols-3 xl:divide-x xl:divide-y-0">
         <PatientProfileHeader patient={patient} canLogTreatment variant="section" />
         <ContactDetailsCard patient={patient} canEdit />
         <BillingDetailsCard patient={patient} canEdit />
@@ -110,13 +110,13 @@ export default async function PatientProfilePage({
             {/* Overview: the three things a clinician wants before picking up
                 a handpiece, side by side, each linking through to its tab. */}
             <TabsContent value="overview" className="min-h-72">
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-                <section className="animate-rise-in stagger-1 flex flex-col gap-3">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-5">
+                <section className="animate-rise-in stagger-1 flex flex-col gap-3 md:col-span-2 xl:col-span-1">
                   <h3 className={PANEL_HEADING}>Medical History</h3>
                   <div>{medicalHistory}</div>
                 </section>
 
-                <section className="animate-rise-in stagger-2 flex flex-col gap-3 lg:col-span-2">
+                <section className="animate-rise-in stagger-2 flex flex-col gap-3 xl:col-span-2">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className={PANEL_HEADING}>Treatment Plan</h3>
                     <TabLink
@@ -133,7 +133,7 @@ export default async function PatientProfilePage({
                   <TreatmentPlanTable items={treatmentPlan} />
                 </section>
 
-                <section className="animate-rise-in stagger-3 flex flex-col gap-3 lg:col-span-2">
+                <section className="animate-rise-in stagger-3 flex flex-col gap-3 xl:col-span-2">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className={PANEL_HEADING}>Perio chart</h3>
                     <TabLink

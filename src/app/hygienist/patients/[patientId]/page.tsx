@@ -52,8 +52,8 @@ export default async function HygienistPatientProfilePage({
     <div className="flex flex-col gap-6">
       <PatientProfileHeader patient={patient} canLogTreatment />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-1">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-3">
+        <div className="xl:col-span-1">
           <Card className="divide-y divide-border">
             <ContactDetailsCard patient={patient} canEdit />
             <BillingDetailsCard patient={patient} canEdit />
@@ -76,7 +76,7 @@ export default async function HygienistPatientProfilePage({
           </Card>
         </div>
 
-        <div className="lg:col-span-2">
+        <div className="xl:col-span-2">
           <Card>
             <CardContent>
               <Tabs defaultValue="treatment-plan">

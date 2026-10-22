@@ -93,7 +93,7 @@ export function HelpFab({ phoneHref = FALLBACK_PHONE_HREF }: HelpFabProps) {
       className={cn(
         // Clear of the bottom tab bar on a phone; a normal corner button once
         // the tab bar is gone.
-        "pointer-events-none fixed inset-x-0 bottom-24 z-30 flex flex-col items-end gap-2 px-4 sm:bottom-6 sm:px-6 lg:bottom-8",
+        "pointer-events-none fixed inset-x-0 bottom-24 z-30 flex flex-col items-end gap-2 px-4 sm:px-6 lg:bottom-8",
         "transition-all duration-200 ease-out motion-reduce:transition-none",
         // Never duck away mid-interaction — an open menu stays put.
         hidden && !open && "pointer-events-none translate-y-24 opacity-0",
